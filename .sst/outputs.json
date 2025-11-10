@@ -1,0 +1,1 @@
+{"database":{"connectionString":"/daw/dev/database/connection-string","endpoint":"daw-aurora-dev.cluster-ccbkass84b2d.us-east-1.rds.amazonaws.com","port":3306},"network":{"lambdaSecurityGroupId":"sg-0e78f3a483550e499","vpcId":"vpc-050fab8a9258195b7"},"redis":{"connectionUrl":"/daw/dev/redis/url","endpoint":"10.0.11.245","instanceId":"i-0ec914f45110b9b9c","port":6379}}

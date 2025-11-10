@@ -1,0 +1,242 @@
+---
+description: "CursorRIPER Framework - Customization"
+globs: 
+alwaysApply: false
+version: "1.0.1"
+date_created: "2025-04-05"
+last_updated: "2025-04-06"
+framework_component: "customization"
+priority: "medium"
+scope: "optional"
+---
+<!-- Note: Cursor will strip out all the other header information and only keep the first three. -->
+# CursorRIPER Framework - Customization
+# Version 1.0.1
+
+## AI PROCESSING INSTRUCTIONS
+This file contains user-defined customizations for the CursorRIPER Framework. As an AI assistant, you MUST:
+- Load this file after core framework components if it exists
+- Apply these customizations to override default framework behavior
+- Never modify this file unless explicitly requested by the user
+- Acknowledge the active customizations in your first response of each session
+
+## USER PREFERENCES
+
+### Response Style
+RESPONSE_VERBOSITY: "BALANCED"
+# Possible values: "CONCISE", "BALANCED", "DETAILED"
+# Controls the level of detail in AI responses
+
+CODE_STYLE_PREFERENCES: ""
+# Specify coding style preferences (indentation, naming conventions, etc.)
+
+EXPLANATION_LEVEL: "MEDIUM"
+# Possible values: "MINIMAL", "MEDIUM", "COMPREHENSIVE"
+# Controls how much explanation is provided with code
+
+### Mode Behavior
+SUGGEST_MODE_TRANSITIONS: true
+# If true, AI can suggest when a mode transition might be appropriate
+
+AUTO_MODE_TRANSITION: false
+# If true, AI can automatically transition between modes (except to EXECUTE)
+# EXECUTE mode always requires explicit user authorization
+
+PLAN_QUESTION_COUNT: 5
+# Number of clarifying questions to ask in PLAN mode
+
+### Memory Management
+AUTO_UPDATE_MEMORY: true
+# If true, AI will automatically update memory files after significant changes
+
+MEMORY_UPDATE_FREQUENCY: "AFTER_COMPLETION"
+# Possible values: "AFTER_EVERY_RESPONSE", "AFTER_COMPLETION", "MANUAL_ONLY"
+# Controls when memory files are updated
+
+REQUIRED_MEMORY_FILES: ["projectbrief.md", "activeContext.md", "progress.md"]
+# List of memory files that must exist for the framework to function
+
+### Archive Behavior
+AUTO_ARCHIVE_START_PHASE: true
+# If true, START phase will be automatically archived upon completion
+
+BACKUP_FREQUENCY: "DAILY"
+# Possible values: "NEVER", "DAILY", "WEEKLY", "BEFORE_CHANGES"
+# Controls how often memory bank backups are created
+
+KEEP_BACKUP_COUNT: 5
+# Number of backup sets to retain before deleting oldest
+
+## ADVANCED CUSTOMIZATION
+
+### Command Aliases
+CUSTOM_COMMANDS: {
+  "/r": "/research",
+  "/i": "/innovate",
+  "/p": "/plan",
+  "/e": "/execute",
+  "/rev": "/review"
+}
+# Custom command shortcuts for mode transitions
+
+### Mode Extensions
+RESEARCH_MODE_EXTENSIONS: []
+# Additional behaviors for RESEARCH mode
+
+INNOVATE_MODE_EXTENSIONS: []
+# Additional behaviors for INNOVATE mode
+
+PLAN_MODE_EXTENSIONS: []
+# Additional behaviors for PLAN mode
+
+EXECUTE_MODE_EXTENSIONS: []
+# Additional behaviors for EXECUTE mode
+
+REVIEW_MODE_EXTENSIONS: []
+# Additional behaviors for REVIEW mode
+
+### Framework Extensions
+CUSTOM_PHASES: []
+# Additional project phases beyond standard ones
+
+CUSTOM_WORKFLOWS: []
+# Custom workflows for specific project types
+
+## USER DOCUMENTATION PREFERENCES
+
+### Documentation Format
+DOCUMENTATION_STYLE: "MARKDOWN"
+# Format for generated documentation
+
+INCLUDE_CODE_COMMENTS: true
+# Whether to include detailed comments in generated code
+
+CODE_BLOCK_LANGUAGE_TAGS: true
+# Whether to include language tags in code blocks
+
+### AI Output Format
+MODE_DECLARATION_FORMAT: "[MODE: {mode}]"
+# Format string for mode declarations
+
+PROGRESS_INDICATOR_FORMAT: "[{current_step}/{total_steps}]"
+# Format for progress indicators in responses
+
+## CUSTOM PROJECT STRUCTURE
+
+PROJECT_TYPE: "DEFAULT"
+# Identifies the type of project for specialized handling
+
+CUSTOM_FOLDER_STRUCTURE: {}
+# Custom folder structure definitions for project scaffolding
+
+TECHNOLOGY_PRESETS: {}
+# Predefined technology stacks for quick selection
+
+## DEVELOPMENT TOOL ENFORCEMENT
+
+### Package Management
+ENFORCE_UV_PACKAGE_MANAGER: true
+# If true, AI MUST use uv instead of pip for all Python package management
+# This includes installing packages, managing dependencies, and creating virtual environments
+
+UV_COMMAND_PREFERENCES: {
+  "install": "uv add",
+  "uninstall": "uv remove", 
+  "upgrade": "uv update",
+  "list": "uv pip list",
+  "freeze": "uv pip freeze",
+  "sync": "uv sync"
+}
+# Preferred uv commands for different package management operations
+
+PIP_USAGE_PROHIBITED: true
+# If true, AI MUST NEVER use pip commands and should suggest uv alternatives
+
+### Environment Management
+PREFERRED_VENV_TOOL: "uv"
+# Specifies uv as the preferred tool for virtual environment management
+
+UV_VENV_COMMANDS: {
+  "create": "uv venv",
+  "activate": "source .venv/bin/activate",
+  "deactivate": "deactivate"
+}
+# uv commands for virtual environment operations
+
+## CRITICAL INFRASTRUCTURE RULES
+
+### Virtual Environment Protection
+NEVER_DELETE_VENV: true
+# CRITICAL: NEVER attempt to delete .venv directory under ANY circumstances
+# The .venv directory is managed by UV and acts as a logical mapped drive in devcontainers
+# Attempting to delete it causes corruption and "Device or resource busy" errors
+# UV manages this directory automatically - leave it alone
+
+VENV_PROTECTION_MESSAGE: "CRITICAL: .venv is UV-managed and cannot be deleted. It's a virtual drive in devcontainers."
+# Message to display when .venv deletion is attempted
+
+SAFE_CLEANUP_DIRECTORIES: [
+  "__pycache__",
+  ".pytest_cache", 
+  ".sst",
+  "build",
+  "*.egg-info"
+]
+# Directories that are safe to clean during troubleshooting
+
+### Infrastructure as Code Enforcement
+NEVER_MANUAL_AWS_UPDATES: true
+# CRITICAL: NEVER manually update AWS resources outside of IaC tools
+# All AWS changes must go through the project's Infrastructure as Code system
+
+IAAC_TOOL: "SST"
+# Current project's Infrastructure as Code tool (SST, CDK, Terraform, etc.)
+
+PROHIBITED_MANUAL_COMMANDS: [
+  "aws lambda update-function-configuration",
+  "aws lambda update-function-code", 
+  "aws apigateway *",
+  "aws s3api *",
+  "aws rds modify-*",
+  "aws ec2 modify-*"
+]
+# AWS CLI commands that should NEVER be used manually
+
+IAAC_ENFORCEMENT_MESSAGE: "CRITICAL: All AWS changes must go through SST. Manual AWS CLI updates cause infrastructure drift and deployment corruption."
+# Message to display when manual AWS updates are attempted
+
+REQUIRED_IAAC_WORKFLOW: "All changes → SST config files → npx sst deploy --stage {stage}"
+# Required workflow for infrastructure changes
+
+### SST State Management
+SST_STATE_SYNC_FIRST: true
+# CRITICAL: Always use "sst refresh" before "sst remove" for state sync issues
+# SST maintains a cached state file that can go out of sync with actual cloud resources
+
+SST_STATE_SYNC_WORKFLOW: [
+  "sst refresh --stage {stage}",
+  "sst deploy --stage {stage}"
+]
+# Primary workflow for fixing SST state sync issues
+
+SST_REMOVE_LAST_RESORT: true
+# Only use "sst remove" as absolute last resort when "sst refresh" fails
+# "sst remove" is nuclear option that destroys entire deployment
+
+SST_STATE_SYNC_MESSAGE: "CRITICAL: Use 'sst refresh' to sync SST state with actual cloud resources. Manual AWS changes cause state drift."
+# Message to display when SST state sync issues are detected
+
+SST_DOCUMENTATION_REFERENCE: "https://sst.dev/docs/state/#out-of-sync"
+# Official SST documentation for state management and sync procedures
+
+### SST Troubleshooting Priority
+SST_TROUBLESHOOTING_FIRST_STEP: "grep -i 'error|fail|exception' .sst/pulumi/*/eventlog.json"
+# CRITICAL: Always check Pulumi logs FIRST when SST reports success but resources don't exist
+# This saves 20+ minutes of troubleshooting by immediately showing the root cause
+
+SST_TROUBLESHOOTING_MESSAGE: "CRITICAL: Check Pulumi event logs immediately when deployment succeeds but resources don't exist in AWS. Don't waste time checking CloudWatch, Lambda lists, or API Gateway until you've verified actual deployment errors."
+# Message to enforce proper troubleshooting sequence
+
+---
+
+*This file contains user-defined customizations for the CursorRIPER Framework. Edit these settings to adjust framework behavior to your preferences.*

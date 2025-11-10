@@ -1,0 +1,46 @@
+
+  .sst/platform/sst.config.1762553176188.mjs ─── 54.0kb ─ 100.0%
+   ├ .sst/platform/src/components/component.ts ─ 15.5kb ── 28.6%
+   │  └ .sst/platform/src/components/linkable.ts
+   │     └ .sst/platform/src/components/link.ts
+   │        └ .sst/platform/src/auto/run.ts
+   │           └ eval.ts
+   ├ infra/redis-ec2.ts ──────────────────────── 10.9kb ── 20.3%
+   │  └ sst.config.ts
+   │     └ eval.ts
+   ├ infra/network.ts ─────────────────────────── 5.2kb ─── 9.6%
+   │  └ sst.config.ts
+   │     └ eval.ts
+   ├ .sst/platform/src/components/link.ts ─────── 5.0kb ─── 9.2%
+   │  └ .sst/platform/src/auto/run.ts
+   │     └ eval.ts
+   ├ infra/database.ts ────────────────────────── 3.8kb ─── 7.1%
+   │  └ sst.config.ts
+   │     └ eval.ts
+   ├ .sst/platform/src/components/linkable.ts ─── 3.2kb ─── 5.9%
+   │  └ .sst/platform/src/components/link.ts
+   │     └ .sst/platform/src/auto/run.ts
+   │        └ eval.ts
+   ├ sst.config.ts ────────────────────────────── 2.2kb ─── 4.1%
+   │  └ eval.ts
+   ├ .sst/platform/src/auto/run.ts ────────────── 1.9kb ─── 3.6%
+   │  └ eval.ts
+   ├ .sst/platform/src/components/naming.ts ───── 1.6kb ─── 3.0%
+   │  └ .sst/platform/src/components/component.ts
+   │     └ .sst/platform/src/components/linkable.ts
+   │        └ .sst/platform/src/components/link.ts
+   │           └ .sst/platform/src/auto/run.ts
+   │              └ eval.ts
+   ├ project.config.ts ────────────────────────── 1.4kb ─── 2.6%
+   │  └ sst.config.ts
+   │     └ eval.ts
+   ├ .sst/platform/src/shim/run.js ────────────── 432b ──── 0.8%
+   ├ <define:$app> ────────────────────────────── 343b ──── 0.6%
+   │  └ eval.ts
+   ├ <define:$cli> ────────────────────────────── 311b ──── 0.6%
+   │  └ eval.ts
+   ├ .sst/platform/src/components/error.ts ────── 300b ──── 0.5%
+   │  └ .sst/platform/src/auto/run.ts
+   │     └ eval.ts
+   ├ .sst/platform/src/config.ts ──────────────── 194b ──── 0.4%
+   └ eval.ts ──────────────────────────────────── 125b ──── 0.2%

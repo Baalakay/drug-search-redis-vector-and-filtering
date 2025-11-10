@@ -1,0 +1,64 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "EC2LaunchTemplateManagement",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:DescribeLaunchTemplates",
+                "ec2:DescribeLaunchTemplateVersions", 
+                "ec2:CreateLaunchTemplateVersion",
+                "ec2:ModifyLaunchTemplate",
+                "ec2:DescribeInstances",
+                "ec2:DescribeImages",
+                "ec2:DescribeSecurityGroups",
+                "ec2:DescribeSubnets",
+                "ec2:DescribeVpcs"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "SSMParameterManagement",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:GetParameter",
+                "ssm:GetParameters", 
+                "ssm:PutParameter",
+                "ssm:DescribeParameters"
+            ],
+            "Resource": [
+                "arn:aws:ssm:*:*:parameter/devcontainer/*"
+            ]
+        },
+        {
+            "Sid": "SSMSessionManager",
+            "Effect": "Allow",
+            "Action": [
+                "ssmmessages:CreateControlChannel",
+                "ssmmessages:CreateDataChannel", 
+                "ssmmessages:OpenControlChannel",
+                "ssmmessages:OpenDataChannel"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "EC2InstanceConnect",
+            "Effect": "Allow",
+            "Action": [
+                "ec2-instance-connect:SendSSHPublicKey"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "CloudWatchLogs",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+                "logs:DescribeLogStreams"
+            ],
+            "Resource": "*"
+        }
+    ]
+}

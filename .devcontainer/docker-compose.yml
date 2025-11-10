@@ -1,0 +1,24 @@
+services:
+  carelytics:
+    # 🎯 FULLY DYNAMIC: Works for ANY project name!
+    # Priority: 1) ACTIVE_PROJECT (from .env) 2) WORKSPACE_NAME (backup) 3) 'devcontainer' (fallback)
+    # The set-project-root.sh script automatically detects project name using $(basename "$PWD")
+    container_name: ${ACTIVE_PROJECT:-${WORKSPACE_NAME:-devcontainer}}
+    init: true
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VARIANT: 3.12-bookworm
+        ACTIVE_PROJECT: ${ACTIVE_PROJECT:-${WORKSPACE_NAME:-devcontainer}}
+    volumes:
+     # 📂 DYNAMIC PATHS: Automatically adapts to any workspace structure
+     - ${PROJECT_ROOT:-/workspaces/${ACTIVE_PROJECT:-${WORKSPACE_NAME:-devcontainer}}}:/workspaces/${ACTIVE_PROJECT:-${WORKSPACE_NAME:-devcontainer}}:cached
+    command: sleep infinity
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+    user: "1000:1000"
+
+  

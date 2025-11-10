@@ -1,0 +1,14 @@
+{
+  "name": "@daw/scripts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Utility scripts for DAW project",
+  "scripts": {
+    "shell": "sst shell tsx"
+  },
+  "dependencies": {
+    "@daw/core": "workspace:*",
+    "tsx": "^4.0.0"
+  }
+}
+

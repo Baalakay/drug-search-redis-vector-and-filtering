@@ -20,7 +20,9 @@ export default $config({
     const { projectConfig, getStageConfig } = await import("./project.config");
     const { createNetwork } = await import("./infra/network");
     const { createDatabase } = await import("./infra/database");
-    const { createRedisEC2 } = await import("./infra/redis-ec2");
+    // NOTE: Not importing createRedisEC2 - using existing manually managed Redis instance
+    const { createSyncInfrastructure } = await import("./infra/sync");
+    const { SearchAPI } = await import("./infra/search-api");
     
     const stage = $app.stage;
     const stageConfig = getStageConfig(stage);
@@ -34,7 +36,7 @@ export default $config({
     const network = createNetwork();
     
     // ===== Database Infrastructure =====
-    console.log("💾 Creating Aurora PostgreSQL database...");
+    console.log("💾 Creating Aurora MySQL database...");
     const database = createDatabase({
       vpcId: network.vpc.id,
       privateSubnetIds: network.privateSubnets.map(s => s.id),
@@ -43,13 +45,28 @@ export default $config({
     });
     
     // ===== Cache Infrastructure =====
-    console.log("🔴 Creating Redis Stack 8.2.2 on EC2 (ARM Graviton3)...");
-    const redis = createRedisEC2({
-      vpcId: network.vpc.id,
-      privateSubnetIds: network.privateSubnets.map(s => s.id),
-      securityGroupId: network.redisSecurityGroup.id,
-      stage
-    });
+    // Using existing Redis instance (manually managed)
+    // Instance: i-0aad9fc4ba71454fa (Debian Redis 8.2.3 with LeanVec4x8)
+    // DO NOT create new Redis instance via createRedisEC2()
+    console.log("🔴 Using existing Redis Stack 8.2.3 instance...");
+    const redisHost = "10.0.11.153";  // i-0aad9fc4ba71454fa
+    const redisInstanceId = "i-0aad9fc4ba71454fa";
+    
+    // ===== Data Sync Infrastructure =====
+    console.log("📦 Creating data sync infrastructure...");
+    const sync = createSyncInfrastructure(
+      network.vpc.id,
+      network.privateSubnets.map(s => s.id),
+      network.lambdaSecurityGroup.id,
+      database.connectionStringParam,
+      database.passwordSecretArn,
+      database.endpoint,  // DB host (dynamic)
+      redisHost           // Redis host (static - existing instance)
+    );
+    
+    // ===== Search API Infrastructure =====
+    console.log("🔍 Creating Search API infrastructure...");
+    const searchApi = await SearchAPI();
     
     // ===== Outputs =====
     return {
@@ -59,14 +76,23 @@ export default $config({
         connectionString: database.connectionStringParam
       },
       redis: {
-        endpoint: redis.endpoint,
-        port: redis.port,
-        connectionUrl: redis.redisUrlParam,
-        instanceId: redis.instance.id
+        endpoint: redisHost,
+        port: 6379,
+        connectionUrl: "/daw/dev/redis/url",  // Parameter store path (if exists)
+        instanceId: redisInstanceId
       },
       network: {
         vpcId: network.vpc.id,
         lambdaSecurityGroupId: network.lambdaSecurityGroup.id
+      },
+      sync: {
+        functionName: sync.functionName,
+        functionArn: sync.functionArn,
+        scheduleArn: sync.scheduleArn,
+        logGroupName: sync.logGroupName
+      },
+      searchApi: {
+        url: searchApi.api
       }
     };
   },

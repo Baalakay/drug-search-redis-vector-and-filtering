@@ -2,21 +2,17 @@
     "initializeCommand": "./.devcontainer/set-project-root.sh",
     "name": "${localWorkspaceFolderBasename}",
     "dockerComposeFile": "docker-compose.yml",
-    "service": "carelytics",
+    "service": "app",
     "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
     "remoteUser": "vscode",
     "remoteEnv": {
         "ACTIVE_PROJECT": "${localWorkspaceFolderBasename}",
         "PROJECT_ROOT": "${localWorkspaceFolder}",
         "LOCAL_WORKSPACE_FOLDER": "/workspaces/${localWorkspaceFolderBasename}",
-        "OPENAI_API_KEY": "${localEnv:OPENAI_API_KEY}",
-        "ANTHROPIC_API_KEY": "${localEnv:OPENAI_API_KEY}",
-        "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}",
         "VITE_OPENAI_API_KEY": "${localEnv:OPENAI_API_KEY}"
     },
     "features": {
         "ghcr.io/devcontainers/features/common-utils:2": {
-            "installZsh": "true",
             "username": "vscode",
             "userUid": "1000",
             "userGid": "1000",
@@ -52,9 +48,6 @@
         "type=volume,source=frontend_node_modules_${localWorkspaceFolderBasename},target=/workspaces/${localWorkspaceFolderBasename}/frontend/node_modules",
         "source=/home/ec2-user/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached",
         "source=/home/ec2-user/.git-credentials,target=/home/vscode/.git-credentials,type=bind,consistency=cached",
-        "source=/home/ec2-user/.zsh_history,target=/home/vscode/.zsh_history,type=bind",
-        "source=/home/ec2-user/.oh-my-zsh/themes,target=/home/vscode/.oh-my-zsh/themes,type=bind",
-        "source=/home/ec2-user/.config/bat,target=/home/vscode/.config/bat,type=bind",
         "source=/home/ec2-user/.aws,target=/home/vscode/.aws,type=bind,consistency=cached",
         "type=volume,source=global_npm_cache_${localWorkspaceFolderBasename},target=/home/vscode/.npm"
     ],

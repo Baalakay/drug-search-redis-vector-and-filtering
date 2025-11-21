@@ -3,10 +3,6 @@ set -e
 
 echo "Setting up development environment..."
 
-# 1. Setup ZSH plugins (with error handling for existing directories)
-echo "Setting up ZSH plugins..."
-PLUGINS_DIR="${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins"
-
 # Function to safely clone or update git repos with credential store protection
 clone_or_skip() {
     local repo_url="$1"
@@ -29,16 +25,6 @@ clone_or_skip() {
     fi
 }
 
-# Clone plugins sequentially with small delays to prevent credential store conflicts
-clone_or_skip "https://github.com/zsh-users/zsh-autosuggestions" "$PLUGINS_DIR/zsh-autosuggestions" || true
-sleep 0.5
-clone_or_skip "https://github.com/zsh-users/zsh-completions" "$PLUGINS_DIR/zsh-completions" || true  
-sleep 0.5
-clone_or_skip "https://github.com/zsh-users/zsh-history-substring-search" "$PLUGINS_DIR/zsh-history-substring-search" || true
-sleep 0.5
-clone_or_skip "https://github.com/zsh-users/zsh-syntax-highlighting" "$PLUGINS_DIR/zsh-syntax-highlighting" || true
-sleep 0.5
-clone_or_skip "https://github.com/matthiasha/zsh-uv-env" "$PLUGINS_DIR/zsh-uv-env" || true
 
 # 2. Setup dotfiles (with error handling and credential store protection)
 echo "Setting up dotfiles..."
@@ -72,26 +58,9 @@ else
     echo "⚠️ Dotfiles already exist, skipping"
 fi
 
-# 3. Ensure .zshrc exists and set aliases
-touch ~/.zshrc
-if grep -q '^alias cat=' ~/.zshrc; then
-  sed -i 's|^alias cat=.*|alias cat=batcat|' ~/.zshrc
-else
-  echo 'alias cat=batcat' >> ~/.zshrc
-fi
-if ! grep -q '^alias bat=batcat' ~/.zshrc; then
-  echo 'alias bat=batcat' >> ~/.zshrc
-fi
-
 # 4. npm global install (if needed)
 echo "Updating npm globally..."
 npm install -g npm@11.4.1 || echo "⚠️ Failed to update npm globally, continuing..."
-
-# # 5. Ownership fix
-# ACTIVE_PROJECT="${ACTIVE_PROJECT:-$(basename "$LOCAL_WORKSPACE_FOLDER")}"
-# for d in ".venv" ".mypy_cache" ".pytest_cache" "dist" "frontend/node_modules"; do
-#   sudo chown -R vscode:vscode "/workspaces/$ACTIVE_PROJECT/$d" 2>/dev/null || true
-# done
 
 # 6. Project setup
 PROJECT_PATH="/workspaces/$ACTIVE_PROJECT"

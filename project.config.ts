@@ -16,7 +16,7 @@ export const projectConfig = {
     dev: {
       protect: false,
       removal: "remove" as const,
-      account: process.env.AWS_ACCOUNT_ID_DEV || "123456789012",
+      account: process.env.AWS_ACCOUNT_ID_DEV || "750389970429",  // Actual AWS account
       region: "us-east-1",
     },
     staging: {

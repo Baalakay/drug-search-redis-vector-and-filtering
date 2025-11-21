@@ -1,5 +1,5 @@
 """
-Carelytics Configuration Module
+DAW Configuration Module
 Centralized configuration for Lambda functions and Fargate jobs
 """
 

@@ -1,0 +1,11 @@
+RelationId,Descr
+EME,Employee
+NON,None
+EMR,Employer
+FND,Friend
+ASC,Associate
+DOM,Life partner
+UNK,Unknown
+SIS,Sister
+TRA,Trainer
+SEL,Self

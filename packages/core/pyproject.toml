@@ -1,5 +1,5 @@
 [project]
-name = "DAW-core"
+name = "daw_core"
 version = "1.0.0"
 description = "Core configuration and utilities for DAW"
 requires-python = ">=3.12"

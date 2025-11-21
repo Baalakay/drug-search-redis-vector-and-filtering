@@ -1,0 +1,11 @@
+MED_ROUTE_ID,MED_ROUTE_ABBR,MED_ROUTE_DESC
+16,IVes,intravesical
+167,xtrc,extracorporeal
+159,cepd,continuous epidural
+208,ttrh,transtracheal
+217,NGtb,nasogastric tube
+20,IAtc,intra-articular
+168,ftub,feeding tube
+165,cSbQ,contin. subcutaneous infusion
+265,nash,nasal (home admin)
+222,sret,subretinal

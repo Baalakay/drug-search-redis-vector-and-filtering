@@ -1,8 +1,8 @@
 {
-  "name": "carelytics",
+  "name": "DAW",
   "version": "1.0.0",
   "private": true,
-  "description": "Carelytics AI-powered dental practice scheduling - SST Monorepo",
+  "description": "DAW AI-powered dental practice scheduling - SST Monorepo",
   "workspaces": [
     "packages/*"
   ],

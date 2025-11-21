@@ -92,16 +92,35 @@ Error: failed to run uv export: exit status 2
 2. UV's `export` command returns non-zero exit codes for stderr output (even on success)
 3. Dependency resolution conflicts between `pyproject.toml` and `requirements.txt`
 4. Lock file (`uv.lock`) corruption or staleness
+5. **MOST COMMON**: `functions/` not added to workspace in root `pyproject.toml`
 
 **Symptoms**:
 - Works locally with `uv export` but fails in SST
 - Exit code 2 even when UV succeeds
 - "RangeError: Invalid string length" (error formatting issue)
+- Error immediately after creating `functions/pyproject.toml`
 
 **Why This Keeps Happening**:
 - SST invokes UV in a subprocess with different environment/context than manual runs
 - UV may use different Python interpreters or resolve dependencies differently
 - `.venv` pollution from local development interferes with SST's clean build
+- **Missing workspace configuration** causes UV to not recognize functions package
+
+**Critical Fix** - Add functions to workspace:
+```toml
+# Root pyproject.toml
+[tool.uv.workspace]
+members = [
+    "packages/core",
+    "packages/jobs",
+    "functions",  # ← ADD THIS! Critical for SST
+]
+```
+
+**Without this**, UV won't build the functions package, causing:
+- `uv export: exit status 2`
+- `Workspace does not contain any buildable packages`
+- Silent failures during deployment
 
 ## Permanent Solutions
 
@@ -169,33 +188,77 @@ packages = ["src"]
 
 ### Solution 4: Handler Path vs Import Path Configuration
 
-**Issue**: `"No module named 'core'"` despite correct packaging.
+**Issue**: `"No module named 'core'"` OR `"No module named 'functions'"` OR `"No module named 'src'"` despite correct packaging and directory structure.
 
-**Root Cause**: Mismatch between SST handler path and Lambda runtime import paths.
+**Root Cause**: **CRITICAL MISUNDERSTANDING** - SST does NOT automatically transform the handler path! The handler you specify is used LITERALLY as the Lambda runtime handler.
 
-**Solution**:
+**The Real Problem**:
+SST packages your code using the `name` field from `functions/pyproject.toml`, converting hyphens to underscores. The handler path must match this package name, NOT the directory name or file path.
 
-1. **SST Configuration** (in `infra/application.ts`):
+**✅ CORRECT Solution (Based on Real Project Experience)**:
+
+1. **`functions/pyproject.toml`** - Package name is KEY:
+```toml
+[project]
+name = "my-functions"  # ← Becomes "my_functions" in package (hyphens → underscores)
+version = "1.0.0"
+dependencies = ["boto3>=1.34.131"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+```
+
+2. **Directory Structure** - All `__init__.py` required:
+```
+functions/
+├── __init__.py           # ← REQUIRED
+├── pyproject.toml
+└── src/
+    ├── __init__.py       # ← REQUIRED  
+    └── handlers/
+        ├── __init__.py   # ← REQUIRED
+        └── my_handler.py
+```
+
+3. **SST Configuration** (in `infra/application.ts`) - Use PACKAGE name:
 ```typescript
-handler: "functions/src/handlers/your_handler.handler"
+// ❌ WRONG - Uses directory name or file path
+handler: "functions/src/handlers/my_handler.handler"
+handler: "src.handlers.my_handler.handler"
+
+// ✅ CORRECT - Uses package name from pyproject.toml
+handler: "my_functions.src.handlers.my_handler.handler"
+//        ^^^^^^^^^^^^ (package name with hyphens → underscores)
 ```
 
-2. **Import Paths** (in handler code):
-```python
-from functions.src.core.protocols import GapDetails
-from functions.src.services.database_service import DatabaseService
-```
+4. **Verify Before Deploying**:
+```bash
+# Check what SST actually packages
+ls -la .sst/artifacts/YourFunctionName-src/
 
-3. **Lambda Runtime Handler** (automatically set by SST):
-```
-"src.handlers.your_handler.handler"
+# Find your handler - the path from artifacts root is your handler
+find .sst/artifacts/YourFunctionName-src/ -name "my_handler.py"
+# Output: .sst/artifacts/Function-src/my_functions/src/handlers/my_handler.py
+#                                      ^^^^^^^^^^^^ This is your package root!
 ```
 
 **Key Points**:
-- SST handler path tells SST where to find files
-- Lambda runtime handler tells Lambda how to call the function
-- Import paths must match the deployed package structure
-- Use `functions.src.*` imports, not `src.*` imports
+- ✅ Handler path = Python import path (NOT file path)
+- ✅ Package name from `pyproject.toml` becomes the root module
+- ✅ Hyphens in package names → underscores (`my-pkg` → `my_pkg`)
+- ✅ All `__init__.py` files required in package hierarchy
+- ✅ Add `functions/` to workspace in root `pyproject.toml`
+- ❌ SST does NOT prepend "functions" to the module path
+- ❌ Handler is NOT a file path relative to project root
+
+**Common Mistakes That Waste Hours**:
+1. Using `"functions/src/..."` (file path, not module path)
+2. Using `"src.handlers...."` (missing package root)
+3. Forgetting hyphens → underscores conversion
+4. Missing any `__init__.py` file
+5. Not checking `.sst/artifacts/` to see actual structure
+
+**Result**: Handler works immediately after deploy, no manual Lambda configuration needed.
 
 ### Solution 5: .python-version Files
 
@@ -305,20 +368,113 @@ Before every `sst deploy`:
 4. **Automated pre-deploy script**
 5. **Project structure diagram with annotations**
 
+## Recurring Issue #5: Using Raw Pulumi Lambda Instead of sst.aws.Function
+
+**Frequency**: When copying examples from Pulumi docs instead of SST docs  
+**Error**: Lambda deployment "completes" but function doesn't exist. `PromiseRejectionHandledWarning` in logs.
+
+**Root Cause**: Raw Pulumi `aws.lambda.Function` doesn't integrate with SST's Python packaging system.
+
+**Symptoms**:
+```bash
+✓  Deploy complete
+   outputs: {functionArn: "arn:...", functionName: "..."}
+# But:
+aws lambda list-functions  # ← Shows NO function!
+
+# Related resources exist:
+aws iam get-role --role-name Function-Role  # ✅ Exists
+aws events list-rules  # ✅ Exists  
+aws cloudwatch describe-alarms  # ✅ Exists
+# Lambda function: ❌ Missing
+```
+
+**❌ WRONG**:
+```typescript
+const func = new aws.lambda.Function("MyFunc", {
+  role: roleArn,
+  handler: "handler.lambda_handler",
+  runtime: aws.lambda.Runtime.Python3d12,
+  code: new pulumi.asset.FileArchive("./functions/"),
+});
+```
+
+**✅ CORRECT**:
+```typescript
+const func = new sst.aws.Function("MyFunc", {
+  handler: "my_package.src.handlers.handler.lambda_handler",
+  runtime: "python3.12",
+});
+```
+
+**Key Point**: SST's `sst.aws.Function` handles Python packaging, dependencies, IAM, and error reporting automatically. Raw Pulumi requires all of this manually and fails silently with Python packages.
+
+---
+
+## Recurring Issue #6: Node.js Version Incompatibility (RangeError)
+
+**Frequency**: When deploying VPC Lambda functions with SST v3  
+**Error**: `RangeError: Invalid string length` during deployment
+
+**Root Cause**: SST v3 VPC Lambda deployments require **Node.js v24.5.0 specifically**. Other versions crash.
+
+**Symptoms**:
+```bash
+RangeError: Invalid string length
+# Even with small (2-4KB) packages
+# Even after cleaning .sst directory
+```
+
+**❌ Failing**: Node.js v22.x, v23.x  
+**✅ Working**: Node.js v24.5.0
+
+**Solution**:
+```bash
+nvm install 24.5.0
+nvm use 24.5.0
+nvm alias default 24.5.0
+echo "24.5.0" > .nvmrc
+```
+
+---
+
+## Recurring Issue #7: SST VPC API Change (vpc.subnets deprecated)
+
+**Frequency**: After SST version updates  
+**Error**: `The "vpc.subnets" property has been renamed to "vpc.privateSubnets"`
+
+**Quick Fix**:
+```typescript
+// ❌ Old
+vpc: { subnets: subnetIds }
+
+// ✅ New  
+vpc: { privateSubnets: subnetIds }
+```
+
+---
+
 ## Current Status
 
-### What We've Done
-- ✅ Created `functions/pyproject.toml`
-- ✅ Added `[build-system]` section
-- ✅ Updated SST_LAMBDA_MIGRATION_GUIDE.md with UV requirements
-- ⚠️  Still facing `uv export: exit status 2` errors
+### What We've Documented  
+- ✅ Handler path must match pyproject.toml package name
+- ✅ All `__init__.py` files required
+- ✅ Must add functions to workspace in root pyproject.toml
+- ✅ Use `sst.aws.Function` not raw Pulumi
+- ✅ Node.js v24.5.0 required for VPC Lambda
+- ✅ Check `.sst/artifacts/` to verify package structure
+- ✅ `vpc.privateSubnets` (not `subnets`)
 
-### What's Still Needed
-- [ ] Create automated pre-deploy cleaning script
-- [ ] Add `.gitignore` rules for UV artifacts
-- [ ] Test with completely fresh deployment
-- [ ] Document SST version-specific quirks
-- [ ] Create minimal reproducible example
+### Prevention Checklist (Updated)
+- [ ] `functions/pyproject.toml` exists with `[build-system]`
+- [ ] `functions/__init__.py`, `functions/src/__init__.py`, `functions/src/handlers/__init__.py` exist
+- [ ] `functions` added to `[tool.uv.workspace]` in root `pyproject.toml`
+- [ ] Using `sst.aws.Function` not `aws.lambda.Function`
+- [ ] Node.js v24.5.0 (`node --version`)
+- [ ] Handler path matches package name from pyproject.toml (hyphens → underscores)
+- [ ] VPC config uses `privateSubnets` not `subnets`
+- [ ] No `.venv` in `functions/` directory
+- [ ] Verified package structure in `.sst/artifacts/FunctionName-src/`
 
 ## Next Steps
 

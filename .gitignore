@@ -31,7 +31,7 @@ wheels/
 venv/
 env/
 ENV/
-.env
+.venv
 
 # IDE
 .idea/
@@ -91,6 +91,12 @@ database/imports/
 .env.production.local
 *.pem
 .python-version
+
+# Large binary files
+*.tar
+*.tar.gz
+*.tar.bz2
+*.iso
 
 # Generated images
 uploads/images/*.png

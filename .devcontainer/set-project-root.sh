@@ -3,8 +3,12 @@
 chmod +x "$0" 2>/dev/null || true
 
 PROJECT_ROOT="$(pwd)"
-ACTIVE_PROJECT="$(basename "$PROJECT_ROOT")"
-WORKSPACE_NAME="$ACTIVE_PROJECT"  # Dynamic workspace name for fallbacks
+RAW_PROJECT_NAME="$(basename "$PROJECT_ROOT")"
+
+# Always use lowercase for docker-friendly names
+ACTIVE_PROJECT="$(echo "$RAW_PROJECT_NAME" | tr '[:upper:]' '[:lower:]')"
+WORKSPACE_NAME="$ACTIVE_PROJECT"
+
 ENV_FILE=".devcontainer/.env"
 
 # Ensure .devcontainer exists
@@ -32,12 +36,20 @@ else
   echo "ACTIVE_PROJECT=$ACTIVE_PROJECT" >> "$ENV_FILE"
 fi
 
-# Update or add WORKSPACE_NAME (for dynamic fallbacks)
+# Update or add WORKSPACE_NAME (matches ACTIVE_PROJECT)
 if grep -q "^WORKSPACE_NAME=" "$ENV_FILE"; then
   sed -i "s|^WORKSPACE_NAME=.*$|WORKSPACE_NAME=$WORKSPACE_NAME|" "$ENV_FILE"
 else
   echo "WORKSPACE_NAME=$WORKSPACE_NAME" >> "$ENV_FILE"
 fi
 
-echo "Set PROJECT_ROOT=$PROJECT_ROOT, ACTIVE_PROJECT=$ACTIVE_PROJECT, and WORKSPACE_NAME=$WORKSPACE_NAME in $ENV_FILE
-"
+
+# Update or add COMPOSE_PROJECT_NAME (ensures docker-compose uses project-specific names)
+COMPOSE_PROJECT_NAME="${ACTIVE_PROJECT}_devcontainer"
+if grep -q "^COMPOSE_PROJECT_NAME=" "$ENV_FILE"; then
+  sed -i "s|^COMPOSE_PROJECT_NAME=.*$|COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME|" "$ENV_FILE"
+else
+  echo "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" >> "$ENV_FILE"
+fi
+
+echo "Configured PROJECT_ROOT=$PROJECT_ROOT, ACTIVE_PROJECT=$ACTIVE_PROJECT, WORKSPACE_NAME=$WORKSPACE_NAME, and COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME in $ENV_FILE"

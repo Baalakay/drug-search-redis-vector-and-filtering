@@ -1,9 +1,11 @@
 /**
  * Redis Infrastructure for DAW Drug Search
  * 
- * Deploys self-managed Redis Stack 8.2.2 on EC2 ARM Graviton3
+ * Deploys self-managed Redis 8.2.3 on EC2 x86 (r7i.large)
  * Supports LeanVec4x8 quantization and RediSearch hybrid search
  * All resources named with "DAW" prefix
+ * 
+ * NOTE: Switched from ARM Graviton to x86 due to Redis Stack ARM binary incompatibility
  */
 
 import * as aws from "@pulumi/aws";
@@ -34,14 +36,14 @@ export function createRedisEC2(props: RedisProps) {
     secretString: pulumi.output(generateAuthToken())
   });
 
-  // Get latest Ubuntu 22.04 ARM64 AMI
+  // Get latest Ubuntu 22.04 x86_64 AMI
   const ubuntuAmi = aws.ec2.getAmi({
     mostRecent: true,
     owners: ["099720109477"], // Canonical
     filters: [
       {
         name: "name",
-        values: ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"]
+        values: ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
       },
       {
         name: "virtualization-type",
@@ -80,7 +82,7 @@ export function createRedisEC2(props: RedisProps) {
     policyArn: "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
   });
 
-  // Custom policy for EBS snapshots, S3 access, and Secrets Manager
+  // Custom policy for EBS snapshots, S3 access, Secrets Manager, and Bedrock
   const snapshotPolicy = new aws.iam.Policy("DAW-Redis-SnapshotPolicy", {
     name: `DAW-Redis-SnapshotPolicy-${stage}`,
     policy: JSON.stringify({
@@ -112,7 +114,17 @@ export function createRedisEC2(props: RedisProps) {
           Action: [
             "secretsmanager:GetSecretValue"
           ],
-          Resource: `arn:aws:secretsmanager:*:*:secret:DAW-DB-Password-${stage}-*`
+          Resource: [
+            `arn:aws:secretsmanager:*:*:secret:DAW-AuroraDBCredentials-${stage}-*`,
+            `arn:aws:secretsmanager:*:*:secret:DAW-Redis-AuthToken-${stage}-*`
+          ]
+        },
+        {
+          Effect: "Allow",
+          Action: [
+            "bedrock:InvokeModel"
+          ],
+          Resource: "arn:aws:bedrock:us-east-1::foundation-model/amazon.titan-embed-text-v2:0"
         }
       ]
     }),
@@ -138,23 +150,37 @@ export function createRedisEC2(props: RedisProps) {
   // User data script to install and configure Redis Stack 8.2.2
   const userData = pulumi.all([authTokenValue.secretString]).apply(([token]) => `#!/bin/bash
 set -e
+exec > >(tee /var/log/user-data.log)
+exec 2>&1
+
+echo "Starting Redis Stack 7.4.0 installation on Ubuntu 22.04..."
 
 # Update system
 apt-get update
 apt-get upgrade -y
 
-# Install dependencies
-apt-get install -y curl gpg lsb-release
+# Install dependencies (including for bulk load scripts)
+export DEBIAN_FRONTEND=noninteractive
+apt-get install -y curl gpg lsb-release python3-pip python3-mysql.connector awscli
 
-# Add Redis repository
+# Install latest boto3 and redis via pip (Ubuntu packages too old)
+# boto3: Ubuntu has 1.20.34, need >= 1.28.0 for bedrock-runtime
+# redis: Ubuntu has 3.5.3, need >= 4.0.0 for better password handling
+pip3 install boto3 redis --upgrade
+
+# Add official Redis repository for Redis Stack on x86
 curl -fsSL https://packages.redis.io/gpg | gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
-echo "deb [arch=arm64 signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/redis.list
+echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/redis.list
 
-# Install Redis Stack 8.2.2 (latest stable)
+# Install Redis Stack (includes Redis 7.4 + RediSearch 2.10+ with LeanVec4x8, RedisJSON, etc.)
 apt-get update
 apt-get install -y redis-stack-server
 
-# Create Redis configuration
+# Verify installation
+/opt/redis-stack/bin/redis-server --version
+/opt/redis-stack/bin/redis-cli --version
+
+# Create Redis configuration with LeanVec4x8 quantization support
 cat > /etc/redis-stack.conf <<'EOF'
 # Network
 bind 0.0.0.0
@@ -201,57 +227,67 @@ rename-command FLUSHALL ""
 rename-command CONFIG DAW-CONFIG-PROTECTED
 
 # RediSearch Module (included in Redis Stack)
-loadmodule /opt/redis-stack/lib/redisearch.so
+# Modules loaded automatically by Redis Stack (redisearch.so, rejson.so, etc.)
+# RediSearch 2.10+ includes LeanVec4x8 quantization support
 
 # Limits
 maxclients 10000
 EOF
 
-# Set proper ownership
-chown redis:redis /etc/redis-stack.conf
+# Redis user already created by apt package, just ensure permissions
+mkdir -p /var/lib/redis /var/log/redis
+chown -R redis:redis /var/lib/redis /var/log/redis /etc/redis-stack.conf
 chmod 640 /etc/redis-stack.conf
 
-# Create data directory
-mkdir -p /var/lib/redis-stack
-chown -R redis:redis /var/lib/redis-stack
+# Stop default Redis service (we'll use our custom config)
+systemctl stop redis-server 2>/dev/null || true
+systemctl disable redis-server 2>/dev/null || true
 
-# Create log directory
-mkdir -p /var/log/redis
-chown -R redis:redis /var/log/redis
-
-# Update systemd service to use our config
-cat > /etc/systemd/system/redis-stack-server.service <<'EOF'
+# Create custom systemd service for Redis Stack
+cat > /etc/systemd/system/redis-daw.service <<'SVCEOF'
 [Unit]
-Description=Redis Stack Server
+Description=Redis Stack 7.4 with RediSearch (LeanVec4x8) and RedisJSON
 After=network.target
 
 [Service]
-Type=notify
-ExecStart=/opt/redis-stack/bin/redis-stack-server /etc/redis-stack.conf
-ExecStop=/bin/kill -s TERM $MAINPID
-PIDFile=/var/run/redis/redis-stack-server.pid
-TimeoutStopSec=0
-Restart=always
+Type=simple
 User=redis
 Group=redis
-RuntimeDirectory=redis
-RuntimeDirectoryMode=2755
-
-LimitNOFILE=65535
-LimitNPROC=65535
+ExecStart=/opt/redis-stack/bin/redis-server /etc/redis-stack.conf --loadmodule /opt/redis-stack/lib/redisearch.so --loadmodule /opt/redis-stack/lib/rejson.so
+Restart=always
+RestartSec=3
+LimitNOFILE=65536
+WorkingDirectory=/var/lib/redis-stack
 
 [Install]
 WantedBy=multi-user.target
-EOF
+SVCEOF
 
 # Enable and start Redis
 systemctl daemon-reload
-systemctl enable redis-stack-server
-systemctl start redis-stack-server
+systemctl enable redis-daw
+systemctl start redis-daw
 
-# Install CloudWatch agent
-wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/arm64/latest/amazon-cloudwatch-agent.deb
+# Wait for Redis to start
+sleep 5
+
+# Verify Redis is running
+if systemctl is-active --quiet redis-daw; then
+  echo "✅ Redis Stack 7.4 with RediSearch (LeanVec4x8) started successfully on x86"
+  /opt/redis-stack/bin/redis-cli --no-auth-warning -a ${token} PING
+  /opt/redis-stack/bin/redis-cli --no-auth-warning -a ${token} INFO server | grep redis_version
+  /opt/redis-stack/bin/redis-cli --no-auth-warning -a ${token} MODULE LIST
+else
+  echo "❌ Redis failed to start"
+  systemctl status redis-daw
+  journalctl -u redis-daw -n 50
+  exit 1
+fi
+
+# Install CloudWatch agent (Ubuntu x86_64 uses DEB)
+wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
 dpkg -i -E ./amazon-cloudwatch-agent.deb
+rm ./amazon-cloudwatch-agent.deb
 
 # Configure CloudWatch agent
 cat > /opt/aws/amazon-cloudwatch-agent/etc/config.json <<'CWEOF'
@@ -326,7 +362,7 @@ echo "Redis Stack 8.2.2 installation complete!"
   // Redis EC2 Instance
   const redisInstance = new aws.ec2.Instance("DAW-Redis-Server", {
     ami: ubuntuAmi.then(ami => ami.id),
-    instanceType: "r7g.large",  // ARM Graviton3, 2 vCPU, 16 GB RAM
+    instanceType: "r7i.large",  // x86 (Intel), 2 vCPU, 16 GB RAM
     
     // Network
     subnetId: privateSubnetIds[0],  // Private subnet

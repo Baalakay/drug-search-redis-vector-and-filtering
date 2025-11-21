@@ -1,14 +1,20 @@
 # Redis Infrastructure Decision for DAW Drug Search
 
-**Date:** November 6, 2025  
-**Decision:** Self-Managed Redis Stack 8.2.2 on EC2 ARM (Graviton3)  
-**Status:** Approved for Implementation
+**Date:** November 6, 2025 (Updated: November 16, 2025)  
+**Decision:** Self-Managed Redis 8.2.3 Open Source on EC2 x86 (r7i.large)  
+**Status:** ✅ DEPLOYED AND OPERATIONAL  
+**Instance:** i-0aad9fc4ba71454fa (10.0.11.153)  
+**Password:** DAW-Redis-SecureAuth-2025  
+**Data Status:** 493,573 drugs with LeanVec4x8 compression  
+**Management:** Manually managed (SST does NOT create this instance)
 
 ---
 
 ## Executive Summary
 
-Based on your requirement for Redis quantization (INT8) and hybrid vector + filter search, we recommend deploying **Redis Stack 8.2.2** (latest stable) on **EC2 r7g.large** (ARM Graviton3) instances instead of AWS ElastiCache.
+Based on requirements for Redis quantization (INT8) and hybrid vector + filter search, we deployed **Redis 8.2.3 Open Source** on **EC2 r7i.large** (x86) instance instead of AWS ElastiCache.
+
+**Update (2025-11-13):** After extensive troubleshooting (see `REDIS_8.2.3_INSTALLATION_ODYSSEY.md`), successfully deployed Redis 8.2.3 from official APT repository. Initial plan for ARM Graviton3 was abandoned due to Redis Stack 7.4 stability issues.
 
 **Key Benefits:**
 - ✅ **3x memory reduction** via LeanVec4x8 quantization (200 MB → 67 MB)

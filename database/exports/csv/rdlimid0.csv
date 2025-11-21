@@ -1,0 +1,8 @@
+DLIM_INTER_TYP_CODE,DLIM_INTER_TYP_CODE_DESC
+02,Falsely Decreases
+03,Causes False Positive
+04,Causes False Negative
+01,Falsely Increases
+99,Not Applicable
+05,Falsely Increases or Falsely Decreases
+06,Causes False Negative or False Positive

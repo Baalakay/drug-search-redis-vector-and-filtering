@@ -1,9 +1,7 @@
 services:
-  carelytics:
-    # 🎯 FULLY DYNAMIC: Works for ANY project name!
-    # Priority: 1) ACTIVE_PROJECT (from .env) 2) WORKSPACE_NAME (backup) 3) 'devcontainer' (fallback)
-    # The set-project-root.sh script automatically detects project name using $(basename "$PWD")
-    container_name: ${ACTIVE_PROJECT:-${WORKSPACE_NAME:-devcontainer}}
+  app:
+    # 🎯 Project name is pre-normalized to lowercase in set-project-root.sh
+    container_name: ${ACTIVE_PROJECT}
     init: true
     build: 
       context: .

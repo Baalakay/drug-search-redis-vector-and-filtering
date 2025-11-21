@@ -28,6 +28,108 @@ The "No module named 'core'" issue was NOT a packaging problem - it was a config
 
 ## ⚠️ **CRITICAL ISSUES & SOLUTIONS** (Must Read First!)
 
+### 🚨 **Issue #0: CRITICAL - SST Handler Path Must Match pyproject.toml Package Name**
+
+**Problem**: Lambda fails with `Runtime.ImportModuleError: Unable to import module 'functions/src/handlers/handler'` even with correct directory structure and pyproject.toml.
+
+**Root Cause**: **SST DOES NOT automatically transform handler paths like the docs imply**. The handler path you specify in `sst.aws.Function` is used LITERALLY as the Lambda runtime handler. SST packages your code using the `name` field from `functions/pyproject.toml`, converting hyphens to underscores.
+
+**Example**:
+- `functions/pyproject.toml` has `name = "my-functions"`  
+- SST packages it as `my_functions/` (hyphens → underscores)
+- File is at `functions/src/handlers/handler.py`
+- Packaged location: `.sst/artifacts/FunctionName-src/my_functions/src/handlers/handler.py`
+
+**❌ WRONG Handler Path** (what you might think works):
+```typescript
+handler: "functions/src/handlers/handler.handler"
+// Lambda tries to import: functions.src.handlers.handler
+// Fails because "functions" module doesn't exist
+```
+
+**❌ ALSO WRONG** (from other examples):
+```typescript
+handler: "src.handlers.handler.handler"
+// Lambda tries to import: src.handlers.handler  
+// Fails because "src" isn't at package root
+```
+
+**✅ CORRECT Handler Path**:
+```typescript
+// In infra/application.ts
+handler: "my_functions.src.handlers.handler.handler"
+//        ^^^^^^^^^^^^  (package name from pyproject.toml with hyphens → underscores)
+```
+
+**Complete Working Example**:
+
+1. **`functions/pyproject.toml`**:
+```toml
+[project]
+name = "daw-functions"  # ← This becomes "daw_functions" in the package
+version = "1.0.0"
+requires-python = ">=3.12"
+dependencies = [
+    "boto3>=1.34.131",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]  # Package the src directory
+```
+
+2. **Directory Structure**:
+```
+functions/
+├── __init__.py           # Required!
+├── pyproject.toml
+└── src/
+    ├── __init__.py       # Required!
+    └── handlers/
+        ├── __init__.py   # Required!
+        └── drug_loader.py
+```
+
+3. **SST Configuration** (`infra/application.ts`):
+```typescript
+const syncFunction = new sst.aws.Function("DrugSync", {
+  handler: "daw_functions.src.handlers.drug_loader.lambda_handler",
+  //        ^^^^^^^^^^^^^ (name from pyproject.toml, hyphens → underscores)
+  runtime: "python3.12",
+  // ... other config
+});
+```
+
+**How to Verify the Correct Handler Path**:
+```bash
+# 1. Check what SST actually packaged
+ls -la .sst/artifacts/YourFunctionName-src/
+
+# 2. Find your handler file
+find .sst/artifacts/YourFunctionName-src/ -name "your_handler.py"
+
+# 3. The path from the artifacts root IS your handler path
+# Example output: .sst/artifacts/Function-src/my_package/src/handlers/handler.py
+# Handler should be: my_package.src.handlers.handler.lambda_handler
+```
+
+**Critical Points**:
+1. ✅ **ALWAYS check `.sst/artifacts/` to see actual package structure**
+2. ✅ **Package name from `pyproject.toml` becomes the root module**
+3. ✅ **Hyphens in package names become underscores** (`my-pkg` → `my_pkg`)
+4. ✅ **All `__init__.py` files are REQUIRED** (functions/, src/, handlers/)
+5. ❌ **SST does NOT use the "functions" prefix in the module path**
+6. ❌ **Handler path is NOT relative to project root - it's the Python import path**
+
+**Common Mistakes**:
+- Using `"functions/src/handlers/..."` (treats it as file path, not module path)
+- Forgetting to convert hyphens to underscores in package name
+- Missing `__init__.py` files in the package hierarchy
+- Not adding `functions/` to workspace in root `pyproject.toml`
+
+**Result**: Handler paths that work on first deploy without manual Lambda configuration fixes.
+
+---
+
 ### 🚨 **Issue #1: Lambda Import Errors - "No module named 'src'"**
 
 **Problem**: Lambda functions fail with import errors despite correct file structure.
@@ -157,7 +259,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "functions"  # ⚠️ Simple name, not "carelytics-functions"
+name = "functions"  # ⚠️ Simple name, not "DAW-functions"
 version = "1.0.0"
 requires-python = ">=3.12"
 dependencies = [
@@ -326,46 +428,220 @@ const bucket = new aws.s3.BucketV2("DataBucket", {
 - RDS Databases: `aws.rds.Instance`
 - Parameter Store: `aws.ssm.Parameter`
 
-### 🚨 **Issue #11: SST Lambda Deployment Failures - Functions Not Created**
+### 🚨 **Issue #11: CRITICAL - Using Raw Pulumi Lambda Instead of sst.aws.Function**
 
-**Problem**: SST reports successful deployment but Lambda functions don't exist in AWS.
+**Problem**: Lambda deployment completes but function doesn't exist. `PromiseRejectionHandledWarning` in logs. All related resources created (IAM role, EventBridge, CloudWatch logs) except the Lambda function itself.
 
-**Root Cause**: 
-- Account/profile mismatch (deploying to wrong AWS account)
-- Lambda Layer dependency issues
-- API Gateway permissions not configured
+**Root Cause**: **Using raw Pulumi `aws.lambda.Function` instead of SST's `sst.aws.Function`**. Raw Pulumi doesn't integrate with SST's Python packaging system, causing silent failures.
 
 **Symptoms**:
 ```bash
-✓ Complete    
-functions: map[gapOptimizationHandler:carelytics-ai-patient-ranking-gap-optimization-dev]
-# But aws lambda list-functions shows no functions
+✓  Deploy complete
+   sync: {functionArn: "arn:...", scheduleArn: "arn:..."}
+# But aws lambda list-functions shows NO function
+
+# In logs:
+(node:1865) PromiseRejectionHandledWarning: Promise rejection was handled asynchronously
 ```
 
-**Solution Steps**:
-1. **Verify AWS Account**: Ensure SST deploys to correct account
+**How to Identify**:
+```bash
+# Check if Lambda exists
+aws lambda list-functions --query 'Functions[?contains(FunctionName, `YourFunction`)].FunctionName'
+
+# Check if related resources exist (confirming silent failure)
+aws cloudwatch describe-alarms --alarm-name-prefix "YourFunction"  # ✅ Exists
+aws events list-rules --name-prefix "YourFunction"  # ✅ Exists  
+aws iam get-role --role-name "YourFunction-Role"  # ✅ Exists
+# But Lambda function: ❌ Missing
+```
+
+**❌ WRONG - Raw Pulumi (causes silent failure)**:
+```typescript
+import * as aws from "@pulumi/aws";
+
+const syncFunction = new aws.lambda.Function("MyFunction", {
+  role: lambdaRole.arn,
+  runtime: aws.lambda.Runtime.Python3d12,
+  handler: "my_handler.lambda_handler",
+  code: new pulumi.asset.FileArchive("./functions/"),
+  // ... more config
+});
+```
+
+**✅ CORRECT - SST Native Construct**:
+```typescript
+const syncFunction = new sst.aws.Function("MyFunction", {
+  handler: "my_package.src.handlers.my_handler.lambda_handler",
+  runtime: "python3.12",
+  timeout: "15 minutes",
+  memory: "1 GB",
+  vpc: {
+    securityGroups: [sgId],
+    privateSubnets: subnetIds,
+  },
+  environment: {
+    DB_HOST: dbHost,
+    // ... env vars
+  },
+  permissions: [
+    { actions: ["bedrock:InvokeModel"], resources: ["*"] },
+  ],
+});
+```
+
+**Key Differences**:
+1. ✅ `sst.aws.Function` handles Python packaging automatically
+2. ✅ Integrates with UV/hatchling build system  
+3. ✅ Proper error reporting (no silent failures)
+4. ✅ Automatic IAM role creation with permissions
+5. ✅ VPC configuration simplified
+6. ❌ Raw Pulumi requires manual packaging and IAM setup
+
+**Migration Steps** (if you used raw Pulumi):
+```bash
+# 1. Delete manually created resources
+aws lambda delete-function --function-name YourFunction || true
+aws iam delete-role --role-name YourFunction-Role || true  # After detaching policies
+
+# 2. Update infra code to use sst.aws.Function
+# 3. Ensure functions/pyproject.toml exists with proper config
+# 4. Deploy
+npx sst deploy --stage dev
+
+# 5. Verify Lambda exists
+aws lambda list-functions --query 'Functions[?contains(FunctionName, `YourFunction`)]'
+```
+
+**Result**: Lambda function successfully created and deployable on first attempt.
+
+---
+
+### 🚨 **Issue #12: SST Lambda Deployment Failures - Account ID Shows Placeholder**
+
+**Problem**: SST deployment logs show placeholder account ID (`123456789012`) instead of actual AWS account.
+
+**Root Cause**: `project.config.ts` has placeholder account ID in stage configuration.
+
+**Symptoms**:
+```bash
+🚀 Deploying DAW to stage: dev
+📍 Region: us-east-1
+🔐 Account: 123456789012  # ← Placeholder!
+```
+
+**Solution**:
 ```typescript
 // project.config.ts
-stages: {
-  dev: {
-    account: "491668389079", // Customer account
-    region: "ca-central-1",
-    profile: "carelytics",    // Correct profile
-  }
+export const projectConfig = {
+  stages: {
+    dev: {
+      protect: false,
+      removal: "remove" as const,
+      account: process.env.AWS_ACCOUNT_ID_DEV || "750389970429",  // ← Use real account ID
+      region: "us-east-1",
+    },
+  },
+};
+```
+
+**How to Find Your Account ID**:
+```bash
+aws sts get-caller-identity --query Account --output text
+```
+
+---
+
+### 🚨 **Issue #13: Node.js Version Incompatibility with VPC Lambda**
+
+**Problem**: `RangeError: Invalid string length` when deploying Lambda functions to VPC, even with small packages.
+
+**Root Cause**: Node.js version incompatibility. SST v3 VPC Lambda deployments require **Node.js v24.5.0 specifically**.
+
+**Symptoms**:
+```bash
+# Deployment crashes with:
+RangeError: Invalid string length
+    at Object.stringify (node:internal/deps/...)
+
+# Even with:
+- Small Lambda packages (2-4 KB)
+- Clean .sst directory
+- Optimized dependencies
+```
+
+**❌ Failing Version**:
+- Node.js v22.x, v23.x with SST 3.17.x = `RangeError` on VPC Lambda
+
+**✅ Working Version**:
+- Node.js v24.5.0 with SST 3.17.x = Successful VPC Lambda deployment
+
+**Solution**:
+```bash
+# Install correct Node.js version
+nvm install 24.5.0
+nvm use 24.5.0
+
+# Set as default to prevent issues
+nvm alias default 24.5.0
+
+# Verify
+node --version  # Should show v24.5.0
+
+# Deploy
+npx sst deploy --stage dev
+```
+
+**Prevention**: Add to `.nvmrc`:
+```bash
+echo "24.5.0" > .nvmrc
+```
+
+**Reference**: Documented in `docs/SST_LAMBDA_MIGRATION_COMPLETE_GUIDE.md` Issue #11 (line 999-1023).
+
+---
+
+### 🚨 **Issue #14: SST VPC Property Renamed - vpc.subnets → vpc.privateSubnets**
+
+**Problem**: Deployment fails with error `The "vpc.subnets" property has been renamed to "vpc.privateSubnets"`.
+
+**Root Cause**: SST API change in recent versions.
+
+**❌ Old Syntax**:
+```typescript
+vpc: {
+  securityGroups: [sgId],
+  subnets: subnetIds,  // ❌ Deprecated
 }
 ```
 
-2. **Manual Lambda Creation** (if SST fails):
-```bash
-# Create Lambda function manually
-aws lambda create-function \
-  --function-name carelytics-ai-patient-ranking-gap-optimization-dev \
-  --runtime python3.12 \
-  --role arn:aws:iam::ACCOUNT:role/ROLE_NAME \
-  --handler src.handlers.gap_optimization_handler.handler \
-  --zip-file fileb://deployment.zip
+**✅ New Syntax**:
+```typescript
+vpc: {
+  securityGroups: [sgId],
+  privateSubnets: subnetIds,  // ✅ Correct
+}
+```
 
-# Add API Gateway permissions
+**Quick Fix**: Global search and replace in `infra/` directory:
+```bash
+grep -r "vpc.*subnets:" infra/ | grep -v privateSubnets
+# Then update all occurrences
+```
+
+---
+
+### 🚨 **Issue #15: API Gateway Permissions and Routes Not Created**
+
+**Problem**: API Gateway created but routes don't work. Lambda exists but isn't triggered.
+
+**Root Cause**: 
+- Missing Lambda invoke permissions for API Gateway
+- Routes not properly configured
+
+**Solution Steps**:
+1. **Add API Gateway permissions**:
+```bash
 aws lambda add-permission \
   --function-name FUNCTION_NAME \
   --statement-id api-gateway-invoke \
@@ -374,13 +650,18 @@ aws lambda add-permission \
   --source-arn "arn:aws:execute-api:REGION:ACCOUNT:API_ID/*/*/*"
 ```
 
-3. **Add Missing API Routes**:
+2. **Add Missing Routes**:
 ```bash
-# Create missing POST route
 aws apigatewayv2 create-route \
   --api-id API_ID \
-  --route-key "POST /v2/optimize-gap" \
+  --route-key "POST /v2/endpoint" \
   --target "integrations/INTEGRATION_ID"
+```
+
+3. **Verify in SST Config**:
+```typescript
+api.route("GET /health", apiHandler.arn);
+api.route("POST /endpoint", apiHandler.arn);
 ```
 
 ### 🚨 **Issue #12: Gap Type Classification Returning Null**
@@ -445,7 +726,7 @@ aws lambda update-function-configuration \
 ### **Final Project Structure That Works**
 
 ```
-carelytics/
+DAW/
 ├── pyproject.toml                  # ✅ Minimal deployment deps only
 ├── sst.config.ts                   # ✅ Dynamic imports, stage-specific regions
 ├── project.config.ts               # ✅ Centralized config with proper timeouts
@@ -482,7 +763,7 @@ from functions.src.utils.logging_config import setup_logging
 **Root pyproject.toml** (Deployment only):
 ```toml
 [project]
-name = "carelytics-lambda"
+name = "DAW-lambda"
 version = "1.0.0"
 requires-python = ">=3.12"
 dependencies = [
@@ -2142,14 +2423,14 @@ SST automatically adds unique suffixes to certain resource types for CloudFormat
 
 **Resources with SST-generated suffixes:**
 - **SQS Queues**: `sst.aws.Queue` adds suffix like `-knxrctce`
-  - Example: `carelytics-ai-patient-ranking-staging-AIProcessingQueueQueue-knxrctce`
+  - Example: `DAW-ai-patient-ranking-staging-AIProcessingQueueQueue-knxrctce`
 - **API Gateway**: `sst.aws.ApiGatewayV2` adds suffix like `-watnmwfh`
-  - Example: `carelytics-ai-patient-ranking-staging-ApiApi-watnmwfh`
+  - Example: `DAW-ai-patient-ranking-staging-ApiApi-watnmwfh`
 - **CloudWatch Log Groups**: Auto-generated by SST
 
 **Resources with exact naming (using raw Pulumi):**
 - **S3 Buckets**: Use `aws.s3.BucketV2` for exact names
-  - Example: `carelytics-ai-patient-ranking-staging`
+  - Example: `DAW-ai-patient-ranking-staging`
 - **RDS Databases**: Use `aws.rds.Instance` for exact names
 - **Parameter Store**: Use `aws.ssm.Parameter` for exact names
 - **Secrets Manager**: Use `aws.secretsmanager.Secret` for exact names

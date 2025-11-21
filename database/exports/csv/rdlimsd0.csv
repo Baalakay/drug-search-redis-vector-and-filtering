@@ -1,0 +1,5 @@
+DLIM_STATUS_CODE,DLIM_STATUS_CODE_DESC
+98,Not Yet Evaluated
+99,Not Applicable
+00,None; researched and not related to a lab interference
+01,Reviewed; associated to one or more lab interference records

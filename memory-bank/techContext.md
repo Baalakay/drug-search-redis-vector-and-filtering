@@ -46,13 +46,23 @@
   - Storage: Auto-scaling from 10 GB
   - Port: 3306
 
-- **Redis Stack 8.2.2 on EC2** - Vector store with LeanVec4x8 quantization
-  - Instance: **r7g.large** (ARM Graviton3, self-managed)
-  - Note: Using EC2 instead of ElastiCache because ElastiCache only supports Redis 7.1
-  - Node type: cache.r7g.large (ARM-based, cost-effective)
-  - Features: LeanVec4x8 quantization (3x memory reduction), hybrid search
+- **Redis 8.2.3 Open Source on EC2** - Vector store with LeanVec4x8 quantization
+  - Instance: **r7i.large** (x86, self-managed, 16 GB RAM)
+  - **Current Instance:** i-0aad9fc4ba71454fa (10.0.11.153)
+  - **Password:** DAW-Redis-SecureAuth-2025
+  - **OS:** Debian 12 x86
+  - **Data Status:** 493,573 drugs loaded with LeanVec4x8 compression
+  - **Note:** Initially tried r7g.large ARM but Redis Stack 7.4 segfaulted. Switched to x86 for stability.
+  - **Note:** Using EC2 instead of ElastiCache because ElastiCache only supports Redis 7.1
+  - **Installation:** Redis 8.2.3 from official Debian APT repository (packages.redis.io)
+  - **Modules included:** RediSearch (FT.*), RedisJSON, vectorset, bloom filters, timeseries
+  - **Management:** Manually managed (SST does NOT create this instance)
+  - Features: LeanVec4x8 quantization (3x memory reduction), hybrid search, HNSW vector index
   - Encryption: At-rest and in-transit
   - Port: 6379
+  - **Why Redis 8.2.3:** Required for LeanVec4x8 quantization support (not available in 7.x)
+  - See `docs/REDIS_8.2.3_INSTALLATION_ODYSSEY.md` for detailed installation history
+  - See `docs/REDIS_8.2.3_AMI_QUICK_REFERENCE.md` for quick deployment guide
 
 #### Networking
 - **VPC** - Virtual Private Cloud
@@ -81,7 +91,6 @@
 ### Workspace Setup
 - **Platform:** AWS Workspace (VDI environment)
 - **OS:** Amazon Linux 2 (kernel 4.14.355)
-- **Shell:** zsh
 - **Constraint:** No local Docker support (cloud development only)
 
 ### Development Tools

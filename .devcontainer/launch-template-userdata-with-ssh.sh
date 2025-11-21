@@ -228,7 +228,7 @@ sudo -u ec2-user bash << 'EOF'
 # - Cross-account profiles get session tokens from manual refresh script
 #
 # When you run your token refresh script, it will add temporary credentials
-# for cross-account access (carelytics, johnson-lambert, etc.) to this file.
+# for cross-account access (DAW, johnson-lambert, etc.) to this file.
 #
 # Local account operations (750389970429) automatically use instance role.
 CREDS_EOF

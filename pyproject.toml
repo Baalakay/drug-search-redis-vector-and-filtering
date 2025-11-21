@@ -20,7 +20,8 @@ package = false
 members = [
     "packages/core",
     "packages/jobs",
-    "packages/scripts",
+    "functions",  # Lambda functions package
+    # "packages/scripts",  # Temporarily excluded - not needed for Lambda
 ]
 
 [dependency-groups]

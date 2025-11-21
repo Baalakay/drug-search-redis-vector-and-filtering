@@ -10,7 +10,7 @@ set -e  # Exit on error
 # Configuration
 STAGE="${1:-dev}"
 REGION="ca-central-1"
-PROFILE="carelytics"
+PROFILE="DAW"
 ACCOUNT_ID="491668389079"
 
 # Color output
@@ -33,7 +33,7 @@ aws ecr get-login-password --profile ${PROFILE} --region ${REGION} | \
   docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com
 
 # Job #1: Aggregate Metrics
-REPO_NAME_1="carelytics-aggregate-metrics-v2-${STAGE}"
+REPO_NAME_1="DAW-aggregate-metrics-v2-${STAGE}"
 echo -e "\n${GREEN}🐳 Building ${REPO_NAME_1}...${NC}"
 docker build \
   --platform linux/amd64 \
@@ -46,7 +46,7 @@ docker tag ${REPO_NAME_1}:latest ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/$
 docker push ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${REPO_NAME_1}:latest
 
 # Job #2: Priority Analysis
-REPO_NAME_2="carelytics-priority-analysis-v2-${STAGE}"
+REPO_NAME_2="DAW-priority-analysis-v2-${STAGE}"
 echo -e "\n${GREEN}🐳 Building ${REPO_NAME_2}...${NC}"
 docker build \
   --platform linux/amd64 \

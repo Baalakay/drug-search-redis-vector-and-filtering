@@ -1,5 +1,56 @@
 # System Patterns: DAW Drug Search Architecture
 
+## 🚨 CRITICAL: LLM Usage Standards (ALWAYS ENFORCE)
+
+### **Rule 1: ALWAYS Use Bedrock Converse API**
+```python
+# ✅ CORRECT - Use centralized Converse function
+from packages.core.src.config.llm_config import call_claude_converse
+
+response = call_claude_converse(
+    messages=[{"role": "user", "content": "What is lisinopril?"}]
+)
+
+# ❌ WRONG - NEVER use invoke_model() for Claude
+client.invoke_model(modelId="...", body="...")  # NO PROMPT CACHING!
+```
+
+**Why:** `converse()` enables prompt caching (90% cost savings), `invoke_model()` bypasses it entirely.
+
+### **Rule 2: NEVER Hard-Code Model IDs**
+```python
+# ✅ CORRECT - Import from centralized config
+from packages.core.src.config.llm_config import get_llm_config
+
+config = get_llm_config()
+model_id = config["model_id"]  # Uses env var BEDROCK_INFERENCE_PROFILE
+
+# ❌ WRONG - Hard-coded strings
+model_id = "anthropic.claude-sonnet-4-0"
+```
+
+### **Rule 3: ALWAYS Return Complete Metrics**
+```python
+# ✅ CORRECT - Full response with metrics
+return {
+    'success': True,
+    'content': content,
+    'usage': usage,
+    'model': config["model_id"],
+    'metadata': {
+        'input_tokens': usage.get('inputTokens', 0),
+        'output_tokens': usage.get('outputTokens', 0),
+        'latency_ms': latency_ms,
+        'bedrock_latency_ms': bedrock_latency_ms,
+    },
+    'latency_ms': latency_ms
+}
+```
+
+**Complete Documentation:** `docs/LLM_USAGE_STANDARDS.md`
+
+---
+
 ## Architecture Overview
 
 ### High-Level System Design
@@ -240,7 +291,59 @@ With caching (90% cache hit):
 
 ---
 
-### Pattern 6: Batch Enrichment
+### Pattern 6: Multi-Drug Search (Phase Separation)
+
+**Problem:** Queries like "high cholesterol" extract multiple drugs ("atorvastatin rosuvastatin simvastatin"). Single combined embedding gives poor similarity (41%) and misses drugs.
+
+**Solution:** Two-phase search with individual embeddings
+
+```python
+# PHASE 1: Vector search each drug individually (NO expansion)
+drug_terms = ["atorvastatin", "rosuvastatin", "simvastatin", "pravastatin", "lovastatin"]
+all_vector_results = []
+
+for drug_term in drug_terms:
+    embedding = generate_embedding(drug_term)  # Individual embedding
+    results = redis_vector_only_search(embedding, filters)  # NO expansion
+    all_vector_results.extend(results)
+
+# PHASE 2: ONE expansion pass on combined results
+expanded_results = perform_drug_expansion(
+    initial_drugs=all_vector_results,
+    filters=filters
+)
+```
+
+**Performance Impact:**
+```
+Before (single embedding):
+- Embedding: "atorvastatin rosuvastatin simvastatin..." → [vector]
+- Redis KNN: 1 search → finds LOVASTATIN (41% similarity)
+- Missing: ATORVASTATIN, ROSUVASTATIN, PRAVASTATIN
+- Result: 1 of 5 drugs found ❌
+
+After (individual embeddings):
+- Embeddings: 5 separate → 5 vectors
+- Redis KNN: 5 searches → finds ALL 5 drugs
+- Similarities: 54-67% (vs 41%)
+- Expansion: 1 pass (not 5)
+- Result: 5 of 5 drugs found ✅
+```
+
+**Key Benefits:**
+- ✅ 100% recall (finds all Claude-extracted drugs)
+- ✅ Better similarity scores (50-60% vs 30-40%)
+- ✅ Correct badge classification (vector not overwritten by expansion)
+- ✅ More efficient (1 expansion instead of N)
+
+**Implementation:**
+- `redis_vector_only_search()`: Vector search without expansion
+- `perform_drug_expansion()`: Unified expansion logic for drug_class + therapeutic_class
+- Threshold: 3+ drugs triggers multi-drug search
+
+---
+
+### Pattern 7: Batch Enrichment
 
 **Problem:** Fetching drug details one-by-one is slow
 
@@ -593,7 +696,7 @@ artillery run load-test.yml
 
 ---
 
-**Status:** ✅ System patterns documented
-**Last Updated:** 2025-11-06
-**Next Review:** After Phase 1 implementation
+**Status:** ✅ System patterns documented and updated with multi-drug search
+**Last Updated:** 2025-11-21
+**Next Review:** After user acceptance testing
 

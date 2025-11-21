@@ -1,5 +1,5 @@
 services:
-  carelytics:
+  DAW:
     container_name: ${ACTIVE_PROJECT}
     init: true
     # Environment variables can be added here if needed

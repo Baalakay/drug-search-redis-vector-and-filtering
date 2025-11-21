@@ -1,0 +1,8 @@
+UNITS_CTYP,UNITS_CTYP_DESC
+3,per lesion
+5,per 1.73 m2
+2,body surface area (square meters)
+6,"per ""x"" grams of carbohydrate"
+4,per cm2 of lesion
+0,not applicable
+1,patient weight (kilograms)

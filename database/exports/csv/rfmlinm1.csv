@@ -1,0 +1,11 @@
+ICD_CD,ICD_CD_TYPE,ICD_DESC,ICD_DESC_SOURCE_CD,ICD_STATUS_CD,ICD_FIRST_DT,ICD_LAST_DT,ICD_BILLABLE_IND
+320.3,01,Staphylococcal Meningitis,02,2,2010-10-01,2015-09-30,9
+053.14,01,Herpes Zoster Myelitis,02,2,2010-10-01,2015-09-30,9
+D0014ZZ,06,"Beam Radiation of Brain Stem using Heavy Particles (Protons,Ions)",03,0,2015-10-01,,9
+06LH3DZ,06,"Occlusion of Right Hypogastric Vein with Intraluminal Device, Percutaneous Approach",03,0,2015-10-01,,9
+S96.202D,05,"Unspecified injury of intrinsic muscle and tendon at ankle and foot level, left foot, subsequent encounter",03,0,2015-10-01,,9
+V90.08,05,Drowning and submersion due to other unpowered watercraft overturning,03,0,2015-10-01,,9
+035R3ZZ,06,"Destruction of Face Artery, Percutaneous Approach",03,0,2015-10-01,,9
+09JDXZZ,06,"Inspection of Right Inner Ear, External Approach",03,0,2015-10-01,,9
+M84.659A,05,"Pathological fracture in other disease, hip, unspecified, initial encounter for fracture",03,0,2015-10-01,,9
+P56.0,05,Hydrops fetalis due to isoimmunization,03,0,2015-10-01,,9

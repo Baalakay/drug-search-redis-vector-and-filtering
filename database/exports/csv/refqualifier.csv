@@ -1,0 +1,11 @@
+QualifierId,Descr
+2U,Payer Identification Number
+1M,PPO Number
+NF,National Association of Insurance Commissioner's Code
+1G,UPIN
+1D,Medicaid Number
+G1,Prior Authorization
+HI,HIN
+1E,Dentist License Number
+0B,State License Number
+ZZ,NPI

@@ -1,0 +1,11 @@
+ROUTED_MED_ID,MED_NAME_ID,MED_ROUTE_ID,MED_ROUTED_MED_ID_DESC,MED_STATUS_CD,DrugInfo,GenericName,GCN_SEQNO,MED_NAME_TYPE_CD
+56510,49498,24,Alum/Mag Hydroxides W/Simeth oral,1,76900,mag hydrox/aluminum hyd/simeth,"2698,2701,2705",1
+7533,7222,35,Rapid 12,1,,subcutaneous admin. set,22695,1
+148630,114272,35,magnesium sulfate (bulk),0,,magnesium sulfate,"1418,14355,62847",2
+78625,65144,24,Flavor Sweet-SF oral,0,,compound vehicle sugar-free 9,65374,1
+170388,323067,24,compounding vehicle suspension sugar-free no.21 oral,0,,compound vehicle susp SF no.21,75126,2
+55789,48793,24,Formula D Cough Medicine oral,3,9600,guaifenesin/DM/pseudoephedrine,644,1
+21414,20051,24,SOBA Headache Formula oral,1,52300,aspirin/acetaminophen/caffeine,40186,1
+1042,1036,8,aspergillus fumigatis intradermal,3,,mold extracts,13654,2
+192234,460480,35,Instant-Reusable Cold-Heat,0,,cold-hot pack,24554,1
+161619,192165,19,trace elements pedi Zn-Cu-Mn-Se-F-I intravenous,0,,Zn/Cu/mang/selen/fluor/pot iod,69561,2

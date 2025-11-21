@@ -5,6 +5,26 @@
 
 declare module "sst" {
   export interface Resource {
+    "AlternativesFunction": {
+      "name": string
+      "type": "sst.aws.Function"
+    }
+    "DAW-DrugSync-Function": {
+      "name": string
+      "type": "sst.aws.Function"
+    }
+    "DrugDetailFunction": {
+      "name": string
+      "type": "sst.aws.Function"
+    }
+    "DrugSearchAPI": {
+      "type": "sst.aws.ApiGatewayV2"
+      "url": string
+    }
+    "SearchFunction": {
+      "name": string
+      "type": "sst.aws.Function"
+    }
   }
 }
 /// <reference path="sst-env.d.ts" />

@@ -18,7 +18,7 @@ interface DatabaseProps {
 export function createDatabase(props: DatabaseProps) {
   const { vpcId, privateSubnetIds, securityGroupId, stage } = props;
 
-  // DB Subnet Group
+  // DB Subnet Group - import if it already exists
   const dbSubnetGroup = new aws.rds.SubnetGroup("DAW-DB-SubnetGroup", {
     name: `daw-db-subnet-${stage}`,  // AWS requires lowercase
     subnetIds: privateSubnetIds,
@@ -27,11 +27,28 @@ export function createDatabase(props: DatabaseProps) {
       Project: "DAW",
       Stage: stage
     }
+  }, {
+    import: `daw-db-subnet-${stage}`
   });
 
-  // Generate random password for database
+  // Database password secret handling (import existing in dev)
+  const secretName = `DAW-DB-Password-${stage}`;
+  const shouldImportSecret = stage === "dev";
+
+  let passwordSecretArn: pulumi.Output<string>;
+  let passwordSecretString: pulumi.Output<string>;
+
+  if (shouldImportSecret) {
+    const existingSecret = aws.secretsmanager.getSecretOutput({ name: secretName });
+    const existingSecretVersion = aws.secretsmanager.getSecretVersionOutput({
+      secretId: existingSecret.arn
+    });
+
+    passwordSecretArn = existingSecret.arn;
+    passwordSecretString = existingSecretVersion.secretString!;
+  } else {
   const dbPassword = new aws.secretsmanager.Secret("DAW-DB-Password", {
-    name: `DAW-DB-Password-${stage}`,
+      name: secretName,
     description: "Master password for DAW Aurora database",
     tags: {
       Project: "DAW",
@@ -44,72 +61,36 @@ export function createDatabase(props: DatabaseProps) {
     secretString: pulumi.interpolate`{"username":"dawadmin","password":"${pulumi.output(generatePassword())}"}`
   });
 
-  // Aurora MySQL Cluster
-  const cluster = new aws.rds.Cluster("DAW-Aurora-Cluster", {
-    clusterIdentifier: `daw-aurora-${stage}`,
-    engine: "aurora-mysql",
-    engineMode: "provisioned",
-    engineVersion: "8.0.mysql_aurora.3.04.0",  // Aurora MySQL 8.0 compatible
-    databaseName: "daw",
-    masterUsername: "dawadmin",
-    masterPassword: dbPasswordVersion.secretString.apply(s => JSON.parse(s).password),
-    
-    // Serverless v2 scaling
-    serverlessv2ScalingConfiguration: {
-      minCapacity: 0.5,
-      maxCapacity: 4
-    },
-    
-    // Network
-    dbSubnetGroupName: dbSubnetGroup.name,
-    vpcSecurityGroupIds: [securityGroupId],
-    
-    // Backup
-    backupRetentionPeriod: stage === "prod" ? 14 : 7,
-    preferredBackupWindow: "03:00-04:00",
-    preferredMaintenanceWindow: "sun:04:00-sun:05:00",
-    
-    // Encryption
-    storageEncrypted: true,
-    
-    // High Availability (multi-AZ for prod)
-    availabilityZones: stage === "prod" 
-      ? ["us-east-1a", "us-east-1b"]
-      : ["us-east-1a"],
-    
-    skipFinalSnapshot: stage !== "prod",
-    finalSnapshotIdentifier: stage === "prod" ? `daw-aurora-final-${stage}` : undefined,
-    
-    tags: {
-      Name: `DAW-Aurora-Cluster-${stage}`,
-      Project: "DAW",
-      Stage: stage
+    passwordSecretArn = dbPassword.arn;
+    passwordSecretString = dbPasswordVersion.secretString;
+  }
+
+  const parsedSecret = passwordSecretString.apply(value => {
+    try {
+      return JSON.parse(value ?? "{}");
+    } catch {
+      return {};
     }
   });
 
-  // Aurora Cluster Instance (Serverless v2)
-  const clusterInstance = new aws.rds.ClusterInstance("DAW-Aurora-Instance", {
-    identifier: `daw-aurora-instance-${stage}`,
-    clusterIdentifier: cluster.clusterIdentifier,
-    instanceClass: "db.serverless",
-    engine: "aurora-mysql",
-    engineVersion: "8.0.mysql_aurora.3.04.0",  // Match cluster version
-    publiclyAccessible: false,
-    tags: {
-      Name: `DAW-Aurora-Instance-${stage}`,
-      Project: "DAW",
-      Stage: stage
-    }
-  });
+  const dbUsername = parsedSecret.apply(data => data.username ?? "dawadmin");
+  const dbPasswordValue = parsedSecret.apply(data => data.password ?? "");
+
+  // Reference existing Aurora MySQL Cluster (already deployed)
+  const cluster = aws.rds.Cluster.get("DAW-Aurora-Cluster", `daw-aurora-${stage}`);
+
+  // Reference existing Aurora Cluster Instance (Serverless v2)
+  const clusterInstance = aws.rds.ClusterInstance.get("DAW-Aurora-Instance", `daw-aurora-instance-${stage}`);
 
   // Store connection string in Parameter Store
-  const connectionString = pulumi.interpolate`mysql://dawadmin:${dbPasswordVersion.secretString.apply(s => JSON.parse(s).password)}@${cluster.endpoint}:3306/daw`;
+  const connectionString = pulumi.interpolate`mysql://${dbUsername}:${dbPasswordValue}@${cluster.endpoint}:3306/daw`;
   
   const connectionParam = new aws.ssm.Parameter("DAW-DB-ConnectionString", {
     name: `/daw/${stage}/database/connection-string`,
     type: "SecureString",
     value: connectionString,
     description: "DAW Aurora MySQL connection string",
+    overwrite: true,
     tags: {
       Project: "DAW",
       Stage: stage
@@ -122,7 +103,7 @@ export function createDatabase(props: DatabaseProps) {
     endpoint: cluster.endpoint,
     port: cluster.port,
     databaseName: cluster.databaseName,
-    passwordSecretArn: dbPassword.arn,
+    passwordSecretArn,
     connectionStringParam: connectionParam.name
   };
 }
@@ -131,7 +112,9 @@ export function createDatabase(props: DatabaseProps) {
 function generatePassword(): string {
   const crypto = require('crypto');
   const length = 32;
-  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=';
+  // Aurora MySQL doesn't allow: / @ " ' (space)
+  // Safe characters: letters, numbers, and: ! # $ % ^ & * ( ) _ + - =
+  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%^&*()_+-=';
   let password = '';
   const randomBytes = crypto.randomBytes(length);
   

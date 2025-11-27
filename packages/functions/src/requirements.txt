@@ -1,0 +1,4 @@
+mysql-connector-python==8.0.33
+redis==5.0.1
+boto3==1.34.0
+

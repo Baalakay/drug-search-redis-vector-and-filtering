@@ -1,0 +1,111 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Core dumps
+core.*
+
+# pnpm
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+.pnpm-store/
+pnpm-lock.yaml
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Logs
+*.log
+.logfire/
+
+# Project specific
+data/pdfs/*.pdf
+data/diagrams/*.png
+data/diagrams/*.jpg
+data/diagrams/*.jpeg
+data/diagrams/*.gif
+data/diagrams/*.bmp
+data/diagrams/*.tiff
+data/diagrams/*.ico
+data/diagrams/*.svg
+data/diagrams/*.webp
+.env.local
+.env.*.local
+database/imports/
+
+
+# Build
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+.python-version
+
+# Large binary files
+*.tar
+*.tar.gz
+*.tar.bz2
+*.iso
+
+# Generated images
+uploads/images/*.png
+uploads/images/*.jpg
+uploads/images/*.jpeg
+uploads/images/*.gif
+uploads/images/*.bmp
+uploads/images/*.tiff
+uploads/images/*.ico
+uploads/images/*.svg
+uploads/images/*.webp
+node_modules

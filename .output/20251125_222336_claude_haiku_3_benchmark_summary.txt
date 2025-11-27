@@ -1,0 +1,30 @@
+LLM Model Benchmark Summary
+================================================================================
+
+Session ID: 20251125_222336
+Timestamp: 2025-11-25T22:23:36.455465
+Model: Claude Haiku 3
+Model ID: anthropic.claude-3-haiku-20240307-v1:0
+Test Query: 'tastosterne 200 mg vial'
+API URL: https://9yb31qmdfa.execute-api.us-east-1.amazonaws.com
+
+================================================================================
+RESULTS (Averages from warm runs, excluding cold start)
+================================================================================
+
+✅ Claude Haiku 3
+   Model ID: anthropic.claude-3-haiku-20240307-v1:0
+   Successful Runs: 5/5
+   
+   Average Metrics (warm runs):
+     Input Tokens:  1116
+     Output Tokens: 68
+     LLM Latency:   902ms
+     Total Latency: 1.14s
+   
+   Average Cost:
+     Total:  $0.001165
+   
+   Pricing:
+     Input:  $0.80 per 1M tokens
+     Output: $4.00 per 1M tokens

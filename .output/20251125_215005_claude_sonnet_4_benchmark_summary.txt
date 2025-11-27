@@ -1,0 +1,30 @@
+LLM Model Benchmark Summary
+================================================================================
+
+Session ID: 20251125_215005
+Timestamp: 2025-11-25T21:50:05.840649
+Model: Claude Sonnet 4
+Model ID: us.anthropic.claude-sonnet-4-20250514-v1:0
+Test Query: 'tastosterne 200 mg vial'
+API URL: https://9yb31qmdfa.execute-api.us-east-1.amazonaws.com
+
+================================================================================
+RESULTS (Averages from warm runs, excluding cold start)
+================================================================================
+
+✅ Claude Sonnet 4
+   Model ID: us.anthropic.claude-sonnet-4-20250514-v1:0
+   Successful Runs: 5/5
+   
+   Average Metrics (warm runs):
+     Input Tokens:  1116
+     Output Tokens: 68
+     LLM Latency:   1322ms
+     Total Latency: 1.58s
+   
+   Average Cost:
+     Total:  $0.004368
+   
+   Pricing:
+     Input:  $3.00 per 1M tokens
+     Output: $15.00 per 1M tokens

@@ -1,0 +1,24 @@
+services:
+  app:
+    # 🎯 Project name is pre-normalized to lowercase in set-project-root.sh
+    container_name: ${ACTIVE_PROJECT}
+    init: true
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VARIANT: 3.12-bookworm
+        ACTIVE_PROJECT: ${ACTIVE_PROJECT:-${WORKSPACE_NAME:-devcontainer}}
+    volumes:
+     # 📂 DYNAMIC PATHS: Uses original case for folder paths (matches devcontainer.json)
+     # PROJECT_ROOT is the host path (e.g., /workspaces/DAW)
+     # WORKSPACE_FOLDER_NAME is the container path (e.g., /workspaces/DAW) - matches localWorkspaceFolderBasename
+     - ${PROJECT_ROOT:-/workspaces/${WORKSPACE_FOLDER_NAME:-devcontainer}}:/workspaces/${WORKSPACE_FOLDER_NAME:-devcontainer}:cached
+    command: sleep infinity
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+    user: "1000:1000"
+
+  

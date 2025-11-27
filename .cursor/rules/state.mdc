@@ -1,0 +1,44 @@
+---
+description: "CursorRIPER Framework - State Management"
+globs: 
+alwaysApply: true
+version: "1.0.0"
+date_created: "2025-11-03"
+last_updated: "2025-11-03"
+framework_component: "state"
+priority: "critical"
+scope: "always_load"
+---
+
+# CursorRIPER Framework - Project State
+
+## CURRENT STATE
+PROJECT_PHASE="DEVELOPMENT"
+CURRENT_MODE="EXECUTE"
+
+## PROJECT METADATA
+PROJECT_TYPE="drug_search_api"
+PROJECT_NAME="DAW"
+INITIALIZATION_DATE="2025-11-03"
+LAST_SESSION_DATE="2025-11-06"
+
+## PHASE HISTORY
+- 2025-11-03: PROJECT_PHASE set to INITIALIZING (START phase initiated)
+- 2025-11-06: PROJECT_PHASE set to DEVELOPMENT (START phase complete, ready for implementation)
+
+## MODE HISTORY  
+- 2025-11-03: Entered INITIALIZING mode for START phase
+- 2025-11-06: Entered PLAN mode (architecture and implementation plan complete)
+- 2025-11-17: Entered PLAN mode (Phase 6 search endpoint debugging)
+
+## NOTES
+- Drug search system for e-prescribing platform
+- Using Titan embeddings + Redis Stack 8.2.2 (LeanVec4x8) + Claude Sonnet 4 + Aurora PostgreSQL
+- Redis on EC2 r7g.large (not ElastiCache - need quantization support)
+- FDB data available in database/imports/
+- Phase 1 infrastructure code 100% complete (network, database, redis-ec2)
+- All documentation updated to reflect Redis Stack 8.2.2 on EC2 (no more 7.4 references)
+- Obsolete infra/cache.ts (ElastiCache) deleted
+- Ready for deployment or Phase 2 development
+- User is on AWS Workspace VDI without local Docker support
+- ALWAYS use Converse API and centralized config (packages/core/src/config/llm_config.py)

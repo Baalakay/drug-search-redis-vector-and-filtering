@@ -1,0 +1,35 @@
+{
+  "name": "DAW",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DAW AI-powered dental practice scheduling - SST Monorepo",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "sst dev",
+    "build": "sst build",
+    "deploy": "sst deploy",
+    "deploy:staging": "sst deploy --stage staging",
+    "remove": "sst remove",
+    "remove:staging": "sst remove --stage staging",
+    "test": "sst shell pytest tests/",
+    "test:unit": "sst shell pytest tests/unit/",
+    "test:integration": "sst shell pytest tests/integration/",
+    "lint": "sst shell black packages/functions/ && sst shell isort packages/functions/",
+    "type-check": "sst shell mypy packages/functions/",
+    "logs": "sst logs --stage staging --tail",
+    "console": "sst console"
+  },
+  "dependencies": {
+    "@pulumi/aws": "^7.8.0",
+    "@pulumi/pulumi": "^3.206.0",
+    "aws-cdk-lib": "^2.100.0",
+    "constructs": "^10.3.0",
+    "sst": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

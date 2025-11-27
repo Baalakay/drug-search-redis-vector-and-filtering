@@ -1,0 +1,22 @@
+services:
+  DAW:
+    container_name: ${ACTIVE_PROJECT}
+    init: true
+    # Environment variables can be added here if needed
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VARIANT: 3.12-bookworm
+        ACTIVE_PROJECT: ${ACTIVE_PROJECT}
+    volumes:
+     # Use PROJECT_ROOT environment variable for remote development
+     - ${PROJECT_ROOT}:/workspaces/${ACTIVE_PROJECT}:cached
+    command: sleep infinity
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+    user: vscode
+
+  

@@ -1,0 +1,14 @@
+{
+  "name": "@daw/core",
+  "version": "1.0.0",
+  "description": "Shared configuration and utilities",
+  "main": "./src/index.py",
+  "exports": {
+    "./*": [
+      "./src/*/index.py",
+      "./src/*.py"
+    ]
+  },
+  "dependencies": {}
+}
+

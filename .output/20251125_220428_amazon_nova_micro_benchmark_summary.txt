@@ -1,0 +1,30 @@
+LLM Model Benchmark Summary
+================================================================================
+
+Session ID: 20251125_220428
+Timestamp: 2025-11-25T22:04:28.513644
+Model: Amazon Nova Micro
+Model ID: us.amazon.nova-micro-v1:0
+Test Query: 'tastosterne 200 mg vial'
+API URL: https://9yb31qmdfa.execute-api.us-east-1.amazonaws.com
+
+================================================================================
+RESULTS (Averages from warm runs, excluding cold start)
+================================================================================
+
+✅ Amazon Nova Micro
+   Model ID: us.amazon.nova-micro-v1:0
+   Successful Runs: 5/5
+   
+   Average Metrics (warm runs):
+     Input Tokens:  933
+     Output Tokens: 68
+     LLM Latency:   486ms
+     Total Latency: 0.74s
+   
+   Average Cost:
+     Total:  $0.000042
+   
+   Pricing:
+     Input:  $0.04 per 1M tokens
+     Output: $0.14 per 1M tokens

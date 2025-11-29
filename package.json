@@ -2,7 +2,7 @@
   "name": "DAW",
   "version": "1.0.0",
   "private": true,
-  "description": "DAW AI-powered dental practice scheduling - SST Monorepo",
+  "description": "SST v3 Monorepo",
   "workspaces": [
     "packages/*"
   ],

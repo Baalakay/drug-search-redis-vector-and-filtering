@@ -9,18 +9,16 @@ import boto3
 import time
 from typing import Dict
 
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'packages', 'core', 'src'))
+from config.secrets import get_db_credentials, get_redis_config
+
 def get_db_connection():
-    """Get Aurora MySQL connection"""
-    secrets = boto3.client('secretsmanager', region_name='us-east-1')
-    password = secrets.get_secret_value(SecretId='DAW-DB-Password-dev')['SecretString']
-    
-    return mysql.connector.connect(
-        host='daw-aurora-dev.cluster-ccbkass84b2d.us-east-1.rds.amazonaws.com',
-        user='dawadmin',
-        password=password,
-        database='fdb',
-        connection_timeout=30
-    )
+    """Get Aurora MySQL connection using secrets utility"""
+    db_creds = get_db_credentials()
+    db_creds['connection_timeout'] = 30
+    return mysql.connector.connect(**db_creds)
 
 def fetch_ndc_to_druginfo_mapping(db_conn) -> Dict[str, str]:
     """
@@ -153,10 +151,11 @@ def main():
     
     # Connect to Redis
     print("\n3️⃣  Connecting to Redis...")
+    redis_config = get_redis_config()
     redis_client = redis.Redis(
-        host='10.0.11.153',
-        port=6379,
-        password='DAW-Redis-SecureAuth-2025',
+        host=redis_config['host'],
+        port=redis_config['port'],
+        password=redis_config['password'],
         decode_responses=False
     )
     print("   ✓ Connected to Redis")

@@ -3,7 +3,7 @@
 /**
  * Data Sync Infrastructure
  * 
- * Lambda function to sync drugs from Aurora MySQL to Redis with embeddings.
+ * Lambda function to sync data from Aurora MySQL to Redis with embeddings.
  * Scheduled to run daily via EventBridge.
  * 
  * CRITICAL: Using sst.aws.Function instead of raw aws.lambda.Function
@@ -65,15 +65,15 @@ export function createSyncInfrastructure(
   });
 
   /**
-   * Lambda Function for Drug Sync
+   * Lambda Function for Data Sync
    * 
    * Using SST's native Function construct for proper packaging
    * Import existing function to avoid conflicts
    */
   const syncFunction = new sst.aws.Function("DAW-DrugSync-Function", {
     name: `DAW-DrugSync-${stage}`,
-    description: "Sync drugs from Aurora to Redis with Bedrock embeddings",
-    handler: "functions.src.handlers.drug_loader.lambda_handler",
+    description: "Sync data from Aurora to Redis with Bedrock embeddings",
+    handler: "functions/src/handlers/drug_loader.lambda_handler",
     runtime: "python3.12",
     timeout: "15 minutes",
     memory: "1 GB",
@@ -197,12 +197,12 @@ export function createSyncInfrastructure(
    */
   const syncSchedule = new aws.cloudwatch.EventRule("DAW-DrugSync-Schedule", {
     name: `DAW-DrugSync-Schedule-${stage}`,
-    description: "Trigger drug sync daily at 2 AM UTC",
+    description: "Trigger data sync daily at 2 AM UTC",
     scheduleExpression: "cron(0 2 * * ? *)", // Daily at 2 AM UTC
     state: "ENABLED",
     tags: {
       Name: `DAW-DrugSync-Schedule-${stage}`,
-      Project: "DAW",
+      Project: $app.name,
     },
   });
 
@@ -220,7 +220,7 @@ export function createSyncInfrastructure(
     arn: syncFunction.arn,
     input: JSON.stringify({
       batch_size: 100,
-      max_drugs: 0, // Sync all drugs
+      max_drugs: 0, // Sync all items
     }),
   });
 
@@ -234,15 +234,15 @@ export function createSyncInfrastructure(
     comparisonOperator: "GreaterThanThreshold",
     evaluationPeriods: 1,
     metricName: "DrugsFailed",
-    namespace: "DAW/DrugSync",
+    namespace: `${$app.name}/DrugSync`,
     period: 3600, // 1 hour
     statistic: "Sum",
-    threshold: 100, // Alert if > 100 drugs fail
+    threshold: 100, // Alert if > 100 items fail
     treatMissingData: "notBreaching",
-    alarmDescription: "Alert when drug sync has > 100 failures",
+    alarmDescription: "Alert when data sync has > 100 failures",
     tags: {
       Name: `DAW-DrugSync-FailureAlarm-${stage}`,
-      Project: "DAW",
+      Project: $app.name,
     },
   });
 
@@ -260,14 +260,14 @@ export function createSyncInfrastructure(
     statistic: "Sum",
     threshold: 0, // Alert on any error
     treatMissingData: "notBreaching",
-    alarmDescription: "Alert when drug sync Lambda errors",
+    alarmDescription: "Alert when data sync Lambda errors",
     tags: {
       Name: `DAW-DrugSync-ErrorAlarm-${stage}`,
-      Project: "DAW",
+      Project: $app.name,
     },
   });
 
-  console.log("   ✅ Drug sync infrastructure created");
+  console.log("   ✅ Data sync infrastructure created");
 
   return {
     functionName: syncFunction.name,

@@ -1,15 +1,15 @@
+/// <reference path="../.sst/platform/config.d.ts" />
+
 /**
- * API Infrastructure - Drug Search API
+ * API Infrastructure
  * 
- * Defines API Gateway and Lambda functions for:
- * - POST /search - Natural language drug search  
- * - GET /drugs/{ndc}/alternatives - Therapeutic equivalents
- * - GET /drugs/{ndc} - Drug details
+ * Defines API Gateway with Lambda functions for application endpoints.
  * 
  * CRITICAL: Uses sst.aws.Function (NOT raw Pulumi aws.lambda.Function)
  * See: docs/SST_UV_RECURRING_ISSUES.md #5
  */
 
+import * as aws from "@pulumi/aws";
 import * as pulumi from "@pulumi/pulumi";
 
 const config = new pulumi.Config();
@@ -35,7 +35,7 @@ export const api = new aws.apigatewayv2.Api("DAW-SearchAPI", {
     },
     tags: {
         Name: `DAW-SearchAPI-${stage}`,
-        Project: "DAW",
+        Project: $app.name,
         Environment: stage
     }
 });
@@ -44,11 +44,11 @@ export const api = new aws.apigatewayv2.Api("DAW-SearchAPI", {
  * API Gateway Stage with Access Logging
  */
 const apiAccessLogs = new aws.cloudwatch.LogGroup("DAW-SearchAPI-AccessLogs", {
-    name: `/aws/apigateway/DAW-SearchAPI-${stage}`,
+    name: `/aws/apigateway/${$app.name}-SearchAPI-${stage}`,
     retentionInDays: 7,
     tags: {
-        Name: `DAW-SearchAPI-AccessLogs-${stage}`,
-        Project: "DAW"
+        Name: `${$app.name}-SearchAPI-AccessLogs-${stage}`,
+        Project: $app.name
     }
 });
 
@@ -72,8 +72,8 @@ export const apiStage = new aws.apigatewayv2.Stage("DAW-SearchAPI-Stage", {
         })
     },
     tags: {
-        Name: `DAW-SearchAPI-Stage-${stage}`,
-        Project: "DAW",
+        Name: `${$app.name}-SearchAPI-Stage-${stage}`,
+        Project: $app.name,
         Environment: stage
     }
 });

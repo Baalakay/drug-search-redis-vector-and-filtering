@@ -1,7 +1,7 @@
 [project]
 name = "DAW"
 version = "1.0.0"
-description = "DAW - SST v3 Monorepo"
+description = "SST v3 Monorepo"
 requires-python = ">=3.12"
 dependencies = [
     # Core AWS dependencies

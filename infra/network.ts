@@ -1,8 +1,8 @@
 /**
- * Network Infrastructure for DAW Drug Search
+ * Network Infrastructure
  * 
  * Creates VPC, subnets, NAT gateway, and security groups
- * All resources named with "DAW" prefix/suffix
+ * All resources named with project prefix/suffix
  */
 
 import * as aws from "@pulumi/aws";
@@ -16,7 +16,7 @@ export function createNetwork() {
     enableDnsSupport: true,
     tags: {
       Name: "DAW-VPC",
-      Project: "DAW",
+      Project: $app.name,
       Component: "Network"
     }
   }, {
@@ -28,7 +28,7 @@ export function createNetwork() {
     vpcId: vpc.id,
     tags: {
       Name: "DAW-InternetGateway",
-      Project: "DAW"
+      Project: $app.name
     }
   }, {
     import: "igw-0f73a38de0819527c"
@@ -42,7 +42,7 @@ export function createNetwork() {
     mapPublicIpOnLaunch: true,
     tags: {
       Name: "DAW-PublicSubnet-1",
-      Project: "DAW",
+      Project: $app.name,
       Type: "Public"
     }
   }, {
@@ -56,7 +56,7 @@ export function createNetwork() {
     mapPublicIpOnLaunch: true,
     tags: {
       Name: "DAW-PublicSubnet-2",
-      Project: "DAW",
+      Project: $app.name,
       Type: "Public"
     }
   }, {
@@ -70,7 +70,7 @@ export function createNetwork() {
     availabilityZone: "us-east-1a",
     tags: {
       Name: "DAW-PrivateSubnet-1",
-      Project: "DAW",
+      Project: $app.name,
       Type: "Private"
     }
   }, {
@@ -83,7 +83,7 @@ export function createNetwork() {
     availabilityZone: "us-east-1b",
     tags: {
       Name: "DAW-PrivateSubnet-2",
-      Project: "DAW",
+      Project: $app.name,
       Type: "Private"
     }
   }, {
@@ -95,7 +95,7 @@ export function createNetwork() {
     domain: "vpc",
     tags: {
       Name: "DAW-NAT-EIP",
-      Project: "DAW"
+      Project: $app.name
     }
   }, {
     import: "eipalloc-0c51e694a058b9d3c"
@@ -107,7 +107,7 @@ export function createNetwork() {
     subnetId: publicSubnet1.id,
     tags: {
       Name: "DAW-NAT-Gateway",
-      Project: "DAW"
+      Project: $app.name
     }
   }, { 
     dependsOn: [igw],
@@ -119,7 +119,7 @@ export function createNetwork() {
     vpcId: vpc.id,
     tags: {
       Name: "DAW-PublicRouteTable",
-      Project: "DAW"
+      Project: $app.name
     }
   }, {
     import: "rtb-0facca431fbb34d21"
@@ -152,7 +152,7 @@ export function createNetwork() {
     vpcId: vpc.id,
     tags: {
       Name: "DAW-PrivateRouteTable",
-      Project: "DAW"
+      Project: $app.name
     }
   }, {
     import: "rtb-0151ef2f438916b3c"
@@ -181,6 +181,7 @@ export function createNetwork() {
   // });
 
   // Security Group for Lambda functions - import existing
+  // Note: Keep original properties for imported resources to avoid replacement
   const lambdaSecurityGroup = new aws.ec2.SecurityGroup("DAW-Lambda-SG", {
     vpcId: vpc.id,
     description: "Security group for DAW Lambda functions",
@@ -193,13 +194,14 @@ export function createNetwork() {
     }],
     tags: {
       Name: "DAW-Lambda-SecurityGroup",
-      Project: "DAW"
+      Project: "DAW" // Keep original for imported resources
     }
   }, {
     import: "sg-0e78f3a483550e499"
   });
 
   // Security Group for Redis - import existing
+  // Note: Keep original properties for imported resources
   const redisSecurityGroup = new aws.ec2.SecurityGroup("DAW-Redis-SG", {
     vpcId: vpc.id,
     description: "Security group for DAW Redis EC2",
@@ -219,13 +221,14 @@ export function createNetwork() {
     }],
     tags: {
       Name: "DAW-Redis-SecurityGroup",
-      Project: "DAW"
+      Project: "DAW" // Keep original for imported resources
     }
   }, {
     import: "sg-09bc62902d8a5ad29"
   });
 
   // Security Group for RDS - import existing
+  // Note: Keep original properties for imported resources
   const rdsSecurityGroup = new aws.ec2.SecurityGroup("DAW-RDS-SG", {
     vpcId: vpc.id,
     description: "Security group for DAW Aurora RDS",
@@ -254,7 +257,7 @@ export function createNetwork() {
     }],
     tags: {
       Name: "DAW-RDS-SecurityGroup",
-      Project: "DAW"
+      Project: "DAW" // Keep original for imported resources
     }
   }, {
     import: "sg-06751ecb3d755eff2"

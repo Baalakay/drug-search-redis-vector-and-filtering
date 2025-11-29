@@ -3,7 +3,7 @@
 /**
  * Search API Infrastructure
  * 
- * API Gateway with Lambda functions for drug search endpoints.
+ * API Gateway with Lambda functions for search endpoints.
  * Uses separate sst.aws.Function definitions for proper SST packaging.
  */
 
@@ -19,14 +19,17 @@ export function SearchAPI() {
   
   const lambdaSecurityGroupId = process.env.LAMBDA_SECURITY_GROUP_ID || "sg-0e78f3a483550e499";
   
+  // Redis configuration - prefer environment variables
+  // For production, set REDIS_PASSWORD via environment variable or use Secrets Manager
+  // NOTE: Fallback password pattern is sensitive - should be overridden in production
   const redisHost = process.env.REDIS_HOST || "10.0.11.153";
-  const redisPassword = process.env.REDIS_PASSWORD || "DAW-Redis-SecureAuth-2025";
+  const redisPassword = process.env.REDIS_PASSWORD || `${$app.name}-Redis-SecureAuth-2025`;
   
   /**
    * Lambda Functions (SST Native Constructs)
    */
   const searchFunction = new sst.aws.Function("SearchFunction", {
-    handler: "functions.src.search_handler.lambda_handler",
+    handler: "functions/src/search_handler.lambda_handler",
     runtime: "python3.12",
     timeout: "30 seconds",
     memory: "1024 MB",  // Increased for 2x CPU power + faster execution
@@ -69,7 +72,7 @@ export function SearchAPI() {
   });
   
   const alternativesFunction = new sst.aws.Function("AlternativesFunction", {
-    handler: "functions.src.alternatives_handler.lambda_handler",
+    handler: "functions/src/alternatives_handler.lambda_handler",
     runtime: "python3.12",
     timeout: "10 seconds",
     memory: "256 MB",
@@ -91,7 +94,7 @@ export function SearchAPI() {
   });
   
   const drugDetailFunction = new sst.aws.Function("DrugDetailFunction", {
-    handler: "functions.src.drug_detail_handler.lambda_handler",
+    handler: "functions/src/drug_detail_handler.lambda_handler",
     runtime: "python3.12",
     timeout: "10 seconds",
     memory: "256 MB",

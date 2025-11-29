@@ -6,8 +6,8 @@ requires-python = ">=3.12"
 members = [
     "daw",
     "daw-core",
-    "daw-functions",
     "daw-jobs",
+    "functions",
 ]
 
 [[package]]
@@ -158,25 +158,6 @@ dependencies = [
 requires-dist = [{ name = "boto3", specifier = ">=1.34.131" }]
 
 [[package]]
-name = "daw-functions"
-version = "1.0.0"
-source = { editable = "functions" }
-dependencies = [
-    { name = "boto3" },
-    { name = "mysql-connector-python" },
-    { name = "numpy" },
-    { name = "redis" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "boto3", specifier = ">=1.34.0" },
-    { name = "mysql-connector-python", specifier = ">=8.0.33" },
-    { name = "numpy", specifier = "==1.26.2" },
-    { name = "redis", specifier = "==5.0.1" },
-]
-
-[[package]]
 name = "daw-jobs"
 version = "1.0.0"
 source = { editable = "packages/jobs" }
@@ -191,6 +172,25 @@ requires-dist = [
     { name = "boto3", specifier = ">=1.34.131" },
     { name = "daw-core", editable = "packages/core" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
+]
+
+[[package]]
+name = "functions"
+version = "1.0.0"
+source = { editable = "packages/functions" }
+dependencies = [
+    { name = "boto3" },
+    { name = "mysql-connector-python" },
+    { name = "numpy" },
+    { name = "redis" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "boto3", specifier = ">=1.34.0" },
+    { name = "mysql-connector-python", specifier = ">=8.0.33" },
+    { name = "numpy", specifier = "==1.26.2" },
+    { name = "redis", specifier = "==5.0.1" },
 ]
 
 [[package]]

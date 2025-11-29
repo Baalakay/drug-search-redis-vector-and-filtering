@@ -10,18 +10,13 @@ import boto3
 import mysql.connector
 from typing import Dict, Any
 
+# Add packages to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'packages', 'core', 'src'))
+from config.secrets import get_db_credentials as _get_db_credentials
+
 def get_db_credentials() -> Dict[str, str]:
-    """Get database credentials from Secrets Manager"""
-    sm = boto3.client('secretsmanager', region_name='us-east-1')
-    secret = sm.get_secret_value(SecretId='DAW-DB-Password-dev')
-    password = secret['SecretString']
-    
-    return {
-        'host': 'daw-aurora-dev.cluster-ccbkass84b2d.us-east-1.rds.amazonaws.com',
-        'user': 'dawadmin',
-        'password': password,
-        'database': 'fdb'
-    }
+    """Get database credentials using secrets utility"""
+    return _get_db_credentials()
 
 def run_query(conn, query: str, params: tuple = None) -> list:
     """Execute query and return results"""

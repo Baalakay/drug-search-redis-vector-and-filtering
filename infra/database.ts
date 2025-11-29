@@ -1,8 +1,8 @@
 /**
- * Database Infrastructure for DAW Drug Search
+ * Database Infrastructure
  * 
- * Creates Aurora MySQL Serverless v2 cluster for FDB data
- * All resources named with "DAW" prefix
+ * Creates Aurora MySQL Serverless v2 cluster
+ * All resources named with project prefix
  */
 
 import * as aws from "@pulumi/aws";
@@ -24,7 +24,7 @@ export function createDatabase(props: DatabaseProps) {
     subnetIds: privateSubnetIds,
     tags: {
       Name: `DAW-DB-SubnetGroup-${stage}`,
-      Project: "DAW",
+      Project: $app.name,
       Stage: stage
     }
   }, {
@@ -49,7 +49,7 @@ export function createDatabase(props: DatabaseProps) {
   } else {
   const dbPassword = new aws.secretsmanager.Secret("DAW-DB-Password", {
       name: secretName,
-    description: "Master password for DAW Aurora database",
+    description: "Master password for Aurora database",
     tags: {
       Project: $app.name,
       Stage: stage

@@ -27,42 +27,30 @@ import redis
 import numpy as np
 
 # AWS clients
-sm_client = boto3.client('secretsmanager', region_name='us-east-1')
 bedrock_client = boto3.client('bedrock-runtime', region_name='us-east-1')
 
 # Configuration
-DB_HOST = 'daw-aurora-dev.cluster-ccbkass84b2d.us-east-1.rds.amazonaws.com'
-DB_NAME = 'fdb'
-REDIS_HOST = '10.0.11.153'
-REDIS_PORT = 6379
 TEST_KEY_PREFIX = 'drug_test:'  # Use separate namespace for testing
 TEST_INDEX_NAME = 'drugs_test_idx'
 
-def get_db_password():
-    """Get database password from Secrets Manager"""
-    secret = sm_client.get_secret_value(SecretId='DAW-DB-Password-dev')
-    secret_dict = json.loads(secret['SecretString'])
-    return secret_dict['password']
+# Add packages to path
+sys.path.insert(0, '/workspaces/DAW/packages/core/src')
+from config.secrets import get_db_credentials, get_redis_config
 
 def connect_to_aurora():
-    """Connect to Aurora MySQL"""
+    """Connect to Aurora MySQL using secrets utility"""
     print("🔗 Connecting to Aurora...")
-    return mysql.connector.connect(
-        host=DB_HOST,
-        user='dawadmin',
-        password=get_db_password(),
-        database=DB_NAME
-    )
+    db_creds = get_db_credentials()
+    return mysql.connector.connect(**db_creds)
 
 def connect_to_redis():
-    """Connect to Redis"""
+    """Connect to Redis using secrets utility"""
     print("🔗 Connecting to Redis...")
-    # Redis password is hardcoded (not in Secrets Manager)
-    password = 'DAW-Redis-SecureAuth-2025'
+    redis_config = get_redis_config()
     return redis.Redis(
-        host=REDIS_HOST,
-        port=REDIS_PORT,
-        password=password,
+        host=redis_config['host'],
+        port=redis_config['port'],
+        password=redis_config['password'],
         decode_responses=False  # Binary data for embeddings
     )
 

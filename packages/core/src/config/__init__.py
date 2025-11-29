@@ -22,6 +22,14 @@ from .llm_config import (
     get_model_config,
     get_available_models
 )
+from .secrets import (
+    get_redis_password,
+    get_db_credentials,
+    get_redis_config,
+    get_secret_from_manager,
+    get_project_name,
+    get_stage,
+)
 
 __all__ = [
     # Practice config
@@ -41,4 +49,11 @@ __all__ = [
     "get_llm_config",
     "get_model_config",
     "get_available_models",
+    # Secrets management
+    "get_redis_password",
+    "get_db_credentials",
+    "get_redis_config",
+    "get_secret_from_manager",
+    "get_project_name",
+    "get_stage",
 ]

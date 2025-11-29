@@ -1,9 +1,9 @@
 /**
- * Redis Infrastructure for DAW Drug Search
+ * Redis Infrastructure
  * 
  * Deploys self-managed Redis 8.2.3 on EC2 x86 (r7i.large)
  * Supports LeanVec4x8 quantization and RediSearch hybrid search
- * All resources named with "DAW" prefix
+ * All resources named with project prefix
  * 
  * NOTE: Switched from ARM Graviton to x86 due to Redis Stack ARM binary incompatibility
  */
@@ -23,10 +23,10 @@ export function createRedisEC2(props: RedisProps) {
 
   // Generate auth token for Redis
   const authToken = new aws.secretsmanager.Secret("DAW-Redis-AuthToken", {
-    name: `DAW-Redis-AuthToken-${stage}`,
-    description: "Auth token for DAW Redis instance",
+    name: `${$app.name}-Redis-AuthToken-${stage}`,
+    description: "Auth token for Redis instance",
     tags: {
-      Project: "DAW",
+      Project: $app.name,
       Stage: stage
     }
   });
@@ -54,7 +54,7 @@ export function createRedisEC2(props: RedisProps) {
 
   // IAM Role for Redis instance (for CloudWatch, SSM, snapshots)
   const redisRole = new aws.iam.Role("DAW-Redis-InstanceRole", {
-    name: `DAW-Redis-InstanceRole-${stage}`,
+    name: `${$app.name}-Redis-InstanceRole-${stage}`,
     assumeRolePolicy: JSON.stringify({
       Version: "2012-10-17",
       Statement: [{
@@ -66,8 +66,8 @@ export function createRedisEC2(props: RedisProps) {
       }]
     }),
     tags: {
-      Name: `DAW-Redis-InstanceRole-${stage}`,
-      Project: "DAW"
+      Name: `${$app.name}-Redis-InstanceRole-${stage}`,
+      Project: $app.name
     }
   });
 
@@ -84,7 +84,7 @@ export function createRedisEC2(props: RedisProps) {
 
   // Custom policy for EBS snapshots, S3 access, Secrets Manager, and Bedrock
   const snapshotPolicy = new aws.iam.Policy("DAW-Redis-SnapshotPolicy", {
-    name: `DAW-Redis-SnapshotPolicy-${stage}`,
+    name: `${$app.name}-Redis-SnapshotPolicy-${stage}`,
     policy: JSON.stringify({
       Version: "2012-10-17",
       Statement: [
@@ -105,8 +105,8 @@ export function createRedisEC2(props: RedisProps) {
             "s3:ListBucket"
           ],
           Resource: [
-            "arn:aws:s3:::daw-temp-data-import-*",
-            "arn:aws:s3:::daw-temp-data-import-*/*"
+            `arn:aws:s3:::${$app.name.toLowerCase()}-temp-data-import-*`,
+            `arn:aws:s3:::${$app.name.toLowerCase()}-temp-data-import-*/*`
           ]
         },
         {
@@ -115,8 +115,8 @@ export function createRedisEC2(props: RedisProps) {
             "secretsmanager:GetSecretValue"
           ],
           Resource: [
-            `arn:aws:secretsmanager:*:*:secret:DAW-AuroraDBCredentials-${stage}-*`,
-            `arn:aws:secretsmanager:*:*:secret:DAW-Redis-AuthToken-${stage}-*`
+            `arn:aws:secretsmanager:*:*:secret:${$app.name}-AuroraDBCredentials-${stage}-*`,
+            `arn:aws:secretsmanager:*:*:secret:${$app.name}-Redis-AuthToken-${stage}-*`
           ]
         },
         {
@@ -129,7 +129,7 @@ export function createRedisEC2(props: RedisProps) {
       ]
     }),
     tags: {
-      Project: "DAW"
+      Project: $app.name
     }
   });
 
@@ -140,15 +140,16 @@ export function createRedisEC2(props: RedisProps) {
 
   // Instance profile
   const instanceProfile = new aws.iam.InstanceProfile("DAW-Redis-InstanceProfile", {
-    name: `DAW-Redis-InstanceProfile-${stage}`,
+    name: `${$app.name}-Redis-InstanceProfile-${stage}`,
     role: redisRole.name,
     tags: {
-      Project: "DAW"
+      Project: $app.name
     }
   });
 
   // User data script to install and configure Redis Stack 8.2.2
-  const userData = pulumi.all([authTokenValue.secretString]).apply(([token]) => `#!/bin/bash
+  const appNameLower = pulumi.output($app.name).apply(n => n.toLowerCase());
+  const userData = pulumi.all([authTokenValue.secretString, $app.name, appNameLower, stage]).apply(([token, appName, appNameLowerVal, stageVal]) => `#!/bin/bash
 set -e
 exec > >(tee /var/log/user-data.log)
 exec 2>&1
@@ -290,10 +291,10 @@ dpkg -i -E ./amazon-cloudwatch-agent.deb
 rm ./amazon-cloudwatch-agent.deb
 
 # Configure CloudWatch agent
-cat > /opt/aws/amazon-cloudwatch-agent/etc/config.json <<'CWEOF'
+cat > /opt/aws/amazon-cloudwatch-agent/etc/config.json <<CWEOF
 {
   "metrics": {
-    "namespace": "DAW/Redis",
+    "namespace": "${appName}/Redis",
     "metrics_collected": {
       "mem": {
         "measurement": [
@@ -316,7 +317,7 @@ cat > /opt/aws/amazon-cloudwatch-agent/etc/config.json <<'CWEOF'
         "collect_list": [
           {
             "file_path": "/var/log/redis/redis-stack-server.log",
-            "log_group_name": "/daw/${stage}/redis",
+            "log_group_name": "/${appNameLowerVal}/${stageVal}/redis",
             "log_stream_name": "{instance_id}"
           }
         ]
@@ -334,19 +335,19 @@ CWEOF
   -c file:/opt/aws/amazon-cloudwatch-agent/etc/config.json
 
 # Setup automated snapshots (cron)
-cat > /usr/local/bin/redis-snapshot.sh <<'SNAPEOF'
+cat > /usr/local/bin/redis-snapshot.sh <<SNAPEOF
 #!/bin/bash
 VOLUME_ID=$(aws ec2 describe-instances --instance-ids $(ec2-metadata --instance-id | cut -d " " -f 2) --query "Reservations[0].Instances[0].BlockDeviceMappings[0].Ebs.VolumeId" --output text)
 DATE=$(date +%Y%m%d-%H%M%S)
 
 aws ec2 create-snapshot \
   --volume-id $VOLUME_ID \
-  --description "DAW-Redis-Backup-$DATE" \
-  --tag-specifications "ResourceType=snapshot,Tags=[{Key=Project,Value=DAW},{Key=Stage,Value=${stage}},{Key=Type,Value=Automated}]"
+  --description "${appName}-Redis-Backup-$DATE" \
+  --tag-specifications "ResourceType=snapshot,Tags=[{Key=Project,Value=${appName}},{Key=Stage,Value=${stageVal}},{Key=Type,Value=Automated}]"
 
 # Clean up old snapshots (keep last 7 days)
 aws ec2 describe-snapshots \
-  --filters "Name=tag:Project,Values=DAW" "Name=tag:Type,Values=Automated" \
+  --filters "Name=tag:Project,Values=${appName}" "Name=tag:Type,Values=Automated" \
   --query "Snapshots[?StartTime<='$(date -d '7 days ago' --iso-8601=seconds)'].SnapshotId" \
   --output text | xargs -n 1 aws ec2 delete-snapshot --snapshot-id
 SNAPEOF
@@ -387,8 +388,8 @@ echo "Redis Stack 8.2.2 installation complete!"
     
     // Tags
     tags: {
-      Name: `DAW-Redis-Server-${stage}`,
-      Project: "DAW",
+      Name: `${$app.name}-Redis-Server-${stage}`,
+      Project: $app.name,
       Stage: stage,
       Component: "Cache",
       RedisVersion: "8.2.2"
@@ -397,17 +398,17 @@ echo "Redis Stack 8.2.2 installation complete!"
 
   // CloudWatch Log Group
   const logGroup = new aws.cloudwatch.LogGroup("DAW-Redis-LogGroup", {
-    name: `/daw/${stage}/redis`,
+    name: pulumi.interpolate`/${appNameLower}/${stage}/redis`,
     retentionInDays: stage === "prod" ? 30 : 7,
     tags: {
-      Project: "DAW",
+      Project: $app.name,
       Stage: stage
     }
   });
 
   // CloudWatch Alarms
   new aws.cloudwatch.MetricAlarm("DAW-Redis-HighCPU", {
-    name: `DAW-Redis-HighCPU-${stage}`,
+    name: `${$app.name}-Redis-HighCPU-${stage}`,
     comparisonOperator: "GreaterThanThreshold",
     evaluationPeriods: 2,
     metricName: "CPUUtilization",
@@ -420,23 +421,23 @@ echo "Redis Stack 8.2.2 installation complete!"
       InstanceId: redisInstance.id
     },
     tags: {
-      Project: "DAW",
+      Project: $app.name,
       Stage: stage
     }
   });
 
   new aws.cloudwatch.MetricAlarm("DAW-Redis-HighMemory", {
-    name: `DAW-Redis-HighMemory-${stage}`,
+    name: `${$app.name}-Redis-HighMemory-${stage}`,
     comparisonOperator: "GreaterThanThreshold",
     evaluationPeriods: 2,
     metricName: "MemoryUsedPercent",
-    namespace: "DAW/Redis",
+    namespace: `${$app.name}/Redis`,
     period: 300,
     statistic: "Average",
     threshold: 90,
     alarmDescription: "Redis memory usage is high",
     tags: {
-      Project: "DAW",
+      Project: $app.name,
       Stage: stage
     }
   });
@@ -445,23 +446,23 @@ echo "Redis Stack 8.2.2 installation complete!"
   const redisHost = redisInstance.privateIp;
   
   const redisUrlParam = new aws.ssm.Parameter("DAW-Redis-URL", {
-    name: `/daw/${stage}/redis/url`,
+    name: pulumi.interpolate`/${appNameLower}/${stage}/redis/url`,
     type: "SecureString",
     value: pulumi.interpolate`redis://:${authTokenValue.secretString}@${redisHost}:6379`,
-    description: "DAW Redis connection URL",
+    description: "Redis connection URL",
     tags: {
-      Project: "DAW",
+      Project: $app.name,
       Stage: stage
     }
   });
 
   const redisHostParam = new aws.ssm.Parameter("DAW-Redis-Host", {
-    name: `/daw/${stage}/redis/host`,
+    name: pulumi.interpolate`/${appNameLower}/${stage}/redis/host`,
     type: "String",
     value: redisHost,
-    description: "DAW Redis host IP",
+    description: "Redis host IP",
     tags: {
-      Project: "DAW",
+      Project: $app.name,
       Stage: stage
     }
   });

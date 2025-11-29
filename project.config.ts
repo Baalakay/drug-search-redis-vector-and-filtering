@@ -11,10 +11,10 @@
 
 export const projectConfig = {
   projectName: process.env.PROJECT_NAME || "DAW",  // Override via PROJECT_NAME env var
-  description: process.env.PROJECT_DESCRIPTION || "E-Prescribing Platform - Drug Search System",
+  description: process.env.PROJECT_DESCRIPTION || "SST v3 Application Platform",
   
   naming: {
-    prefix: process.env.PROJECT_PREFIX || "DAW",  // Override via PROJECT_PREFIX env var
+    prefix: process.env.PROJECT_PREFIX || process.env.PROJECT_NAME || "DAW",  // Use PROJECT_NAME if PROJECT_PREFIX not set
   },
   
   stages: {
